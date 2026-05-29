@@ -27,4 +27,4 @@
 - 최상우/임종원: FastAPI 금융 데모(로그인·조회·이체), PostgreSQL 연동, Prometheus Custom Metrics 제공, Dockerfile 작성 + ansible
 - 임종원/신준한: GitHub Actions, Docker Hub/GHCR 연동, Blue-Green 배포 구조, SAST(Bandit) + Trivy + DAST(ZAP) + 워크플로 통합,
 - 이지윤/박정은: Prometheus, Grafana, Alertmanager, Telegram 연동, Dashboard 구성, Alert Rule 작성
-- 박정은/이지윤: Locust 부하/공격 시나리오, Nginx Rate Limit, fail2ban(선택), 보안 이벤트 검증, 탐지→알림→대응 흐름 테스트Health Check, 전환 및 Rollback 스크립트
+- 박정은/이지윤: Locust 부하/공격 시나리오, Nginx Rate Limit, fail2ban, 보안 이벤트 검증, 탐지→알림→대응 흐름 테스트Health Check, 전환 및 Rollback 스크립트
