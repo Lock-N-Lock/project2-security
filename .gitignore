@@ -11,9 +11,8 @@ override.tf.json
 .terraformrc
 terraform.rc
 # .terraform.lock.hcl 은 커밋합니다(프로바이더 버전 고정). 무시하지 마세요.
-# terraform.tfvars 에 비밀값(키 경로 등)을 넣지 않는다면 커밋해도 됩니다.
-# 비밀값을 넣는다면 아래 주석을 해제하세요.
-# terraform.tfvars
+# terraform.tfvars 에 비밀값(키 경로 등)을 넣는다면 커밋에서 제외.
+terraform.tfvars
 *.auto.tfvars
 
 # terraform apply 시 자동 생성
@@ -40,4 +39,3 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
-*.swp

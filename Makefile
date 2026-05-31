@@ -11,9 +11,9 @@ TF_DIR := infra/terraform
 # 기본 실행 (make)
 help:
 	@echo ""
-	@echo "================================================="
+	@echo "====================================================="
 	@echo "   Lock & Lock 명령어 (project2-security 에서 실행)"
-	@echo "================================================="
+	@echo "====================================================="
 	@echo ""
 	@echo "  [ 초기 설정 ]"
 	@echo "  make setup       AWS CLI + Terraform + Ansible + Docker 설치"
@@ -24,9 +24,10 @@ help:
 	@echo "  make fmt         코드 포맷 정리 (terraform fmt)"
 	@echo "  make validate    문법 검증 (terraform validate)"
 	@echo "  make plan        변경 미리보기 (적용 안 함)"
-	@echo "  make apply  	  인프라 생성 (자동 승인 생성 --auto-approve 포함)"
+	@echo "  make apply  	  인프라 생성 (확인 프롬프트)"
+	@echo "  make apply-auto  인프라 생성 (자동 승인)"
 	@echo "  make output      생성된 IP·ID 출력"
-	@echo "  make destroy     인프라 전체 삭제 (자동 승인 삭제 --auto-approve 포함)"
+	@echo "  make destroy     인프라 전체 삭제 (자동 승인)"
 	@echo ""
 	@echo "  [ 정리 ]"
 	@echo "  make clean       자동 생성 파일 삭제 (state·키 등)"
@@ -55,6 +56,9 @@ plan:
 	cd $(TF_DIR) && terraform plan
 
 apply:
+	cd $(TF_DIR) && terraform apply -parallelism=3
+
+apply-auto:
 	cd $(TF_DIR) && terraform apply --auto-approve -parallelism=3
 
 output:
@@ -67,7 +71,7 @@ destroy:
 	@echo ""
 	@echo "⚠️  모든 인프라가 삭제됩니다. 실습 후 비용 절감용."
 	@echo ""
-	cd $(TF_DIR) && terraform --auto-approve destroy
+	cd $(TF_DIR) && terraform destroy --auto-approve
 
 # ── 정리 ──────────────────────────────────────────────────
 # 주의: .terraform.lock.hcl 은 팀 버전 고정용이라 삭제하지 않습니다(커밋 대상).

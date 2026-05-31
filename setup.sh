@@ -92,12 +92,13 @@ fi
 # ── STEP 5 : Docker (project2 신규) ────────────────────────
 if [ "$DOCKER_INSTALLED" = false ]; then
     info "STEP 5/6 : Docker 설치 중..."
+    sudo dnf remove -y podman buildah runc 2>/dev/null || true   # ← #4: Rocky8 충돌 방지 (한 줄 추가)
     sudo dnf install -y yum-utils -q
     sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo -q 2>/dev/null || true
     sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -q || error "Docker 설치 실패"
     sudo systemctl enable --now docker
     # 현재 사용자를 docker 그룹에 추가 (sudo 없이 docker 사용)
-    sudo usermod -aG docker "$USER"
+    sudo usermod -aG docker "${SUDO_USER:-$USER}"                # ← #5: root 오등록 방지
     command -v docker &>/dev/null && success "Docker 설치 완료: $(docker --version)" || error "Docker 설치 실패"
     warning "docker 그룹 적용을 위해 재로그인 또는 'newgrp docker' 필요"
 else

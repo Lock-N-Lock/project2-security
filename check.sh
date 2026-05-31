@@ -37,8 +37,9 @@ if command -v docker &>/dev/null; then
     else
         warn "docker 권한 없음 → newgrp docker 또는 재로그인 필요"
     fi
-    if docker info 2>/dev/null | grep -q "Username:"; then
-        ok "Docker Hub 로그인됨: $(docker info 2>/dev/null | grep Username | awk '{print $2}')"
+    DOCKER_USER=$(docker info 2>/dev/null | grep "Username:" | awk '{print $2}')
+    if [ -n "$DOCKER_USER" ]; then
+        ok "Docker Hub 로그인됨: $DOCKER_USER"
     else
         warn "Docker Hub 미로그인 → docker login (C 트랙 push용)"
     fi
@@ -47,8 +48,7 @@ echo ""
 
 # ── 3. AWS 자격증명 ────────────────────────────────────────
 echo "[ 3 ] AWS 자격증명 확인"
-if aws sts get-caller-identity &>/dev/null; then
-    ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+if ACCOUNT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null); then
     REGION=$(aws configure get region)
     ok "자격증명 유효 (계정 $ACCOUNT)"
     [ "$REGION" = "ap-northeast-2" ] && ok "리전 정상 : ap-northeast-2" || warn "리전이 ap-northeast-2(서울)이 아님: $REGION"
@@ -59,7 +59,8 @@ echo ""
 
 # ── 4. 프로젝트 폴더 ───────────────────────────────────────
 echo "[ 4 ] 프로젝트 폴더 확인"
-[ -d "$HOME/project2-security/infra/terraform" ] && ok "infra/terraform 존재" || fail "infra/terraform 없음 → scaffold 확인"
+# 수정 후
+[ -d "$(dirname "$0")/infra/terraform" ] && ok "infra/terraform 존재" || fail "infra/terraform 없음 → scaffold 확인"
 echo ""
 
 # ── 5. 비용 안내 ───────────────────────────────────────────
