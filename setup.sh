@@ -53,12 +53,16 @@ fi
 # ── STEP 2 : AWS CLI v2 ────────────────────────────────────
 if [ "$AWS_INSTALLED" = false ]; then
     info "STEP 2/6 : AWS CLI v2 설치 중..."
-    TMP_DIR=$(mktemp -d); cd "$TMP_DIR"
+    TMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TMP_DIR"' EXIT
+    cd "$TMP_DIR"
     curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" || error "AWS CLI 다운로드 실패"
     sudo dnf install -y unzip -q
     unzip -q awscliv2.zip
     sudo ./aws/install
-    cd ~; rm -rf "$TMP_DIR"
+    cd ~
+    rm -rf "$TMP_DIR"
+    trap - EXIT
     command -v aws &>/dev/null && success "AWS CLI 설치 완료: $(aws --version 2>&1 | awk '{print $1}')" || error "AWS CLI 설치 실패"
 else
     info "STEP 2/6 : AWS CLI 건너뜀"
