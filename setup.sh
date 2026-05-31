@@ -11,12 +11,10 @@ set -e  # 오류 발생 시 즉시 중단
 
 # OS 호환성 체크
 if [ ! -f /etc/redhat-release ] && [ ! -f /etc/rocky-release ]; then
-    echo "⚠️  이 스크립트는 Rocky Linux 8 기반입니다."
-    echo "    다른 OS는 아래 도구를 수동 설치하세요:"
+    echo "❌ 이 스크립트는 Rocky Linux 8 기반 환경만 지원합니다."
+    echo "    다른 OS 환경에서는 아래 도구들을 수동으로 설치해 주세요:"
     echo "    - AWS CLI v2 / Terraform / Ansible / Docker"
-    read -p "계속 진행하시겠습니까? (y/N): " -n 1 -r
-    echo
-    [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    exit 1
 fi
 
 # ── 색상 출력 함수 ──────────────────────────────────────────
@@ -72,7 +70,7 @@ fi
 if [ "$TF_INSTALLED" = false ]; then
     info "STEP 3/6 : Terraform 설치 중..."
     sudo dnf install -y yum-utils -q
-    sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo -q 2>/dev/null || true
+    sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo -q || true
     sudo dnf install -y terraform -q
     command -v terraform &>/dev/null && { success "Terraform 설치 완료: $(terraform -version | head -1)"; terraform -install-autocomplete 2>/dev/null || true; } || error "Terraform 설치 실패"
 else

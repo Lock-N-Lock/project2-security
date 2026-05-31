@@ -80,7 +80,5 @@ clean:
 	rm -f  $(TF_DIR)/*.pem
 	rm -f  $(TF_DIR)/inventory.yml
 	rm -f  $(TF_DIR)/ansible.cfg
-	rm -f  $(TF_DIR)/terraform.tfstate
-	rm -f  $(TF_DIR)/terraform.tfstate.backup
 	rm -rf $(TF_DIR)/.terraform
 	@echo "정리 완료 (.terraform.lock.hcl 은 보존)"
