@@ -93,13 +93,13 @@ if [ -z "${TAILSCALE_AUTHKEY:-}" ]; then
     fi
 
     # 파일 생성 + 권한 600 (빈 선택값도 키만 남겨 두어 다음 실행 때 식별 가능)
-    {
-        printf 'TAILSCALE_AUTHKEY=%s\n' "$TAILSCALE_AUTHKEY"
-        printf 'TAILSCALE_API_KEY=%s\n' "${TAILSCALE_API_KEY:-}"
-        printf 'TAILNET_NAME=%s\n'      "${TAILNET_NAME:-}"
-    } > "$KEY_FILE"
+    (
+        TAILSCALE_AUTHKEY="$TAILSCALE_AUTHKEY"
+        TAILSCALE_API_KEY="${TAILSCALE_API_KEY:-}"
+        TAILNET_NAME="${TAILNET_NAME:-}"
+        declare -p TAILSCALE_AUTHKEY TAILSCALE_API_KEY TAILNET_NAME
+    ) > "$KEY_FILE"
     chmod 600 "$KEY_FILE"
-    echo "[OK] ~/.tailscale_key 생성 완료 (chmod 600)"
 else
     echo "[OK] Tailscale 키 확인됨 (~/.tailscale_key)"
 fi
@@ -109,7 +109,7 @@ fi
 #    엄격히 rhel/8 을 원하면 아래 URL 의 9 를 8 로 바꾸면 됨.
 if ! command -v tailscale &>/dev/null; then
     echo "[INFO] Tailscale 리포 등록 및 설치"
-    sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/rhel/9/tailscale.repo
+    sudo dnf config-manager --add-repo https://pkgs.tailscale.com/stable/rhel/8/tailscale.repo || true
     sudo dnf install -y tailscale
 else
     echo "[OK] Tailscale 이미 설치됨: $(tailscale version | head -1)"
@@ -118,16 +118,12 @@ fi
 # 4. IP Forwarding 활성화 (idempotent)
 #    - 서브넷 라우터(광고한 172.16.1.0/24 로 패킷 전달)와
 #    - VXLAN(오버레이 패킷 포워딩) 둘 다에 필요하다.
-if [ ! -f "$SYSCTL_CONF" ]; then
-    echo "[INFO] IP forwarding 설정"
-    sudo tee "$SYSCTL_CONF" >/dev/null <<EOF
+echo "[INFO] IP forwarding 설정 적용"
+sudo tee "$SYSCTL_CONF" >/dev/null <<EOF
 net.ipv4.ip_forward = 1
 net.ipv6.conf.all.forwarding = 1
 EOF
-    sudo sysctl -p "$SYSCTL_CONF"
-else
-    echo "[OK] sysctl 설정 이미 존재: $SYSCTL_CONF"
-fi
+sudo sysctl -p "$SYSCTL_CONF"
 
 # 5. tailscaled 서비스 시작
 sudo systemctl enable --now tailscaled
@@ -154,12 +150,10 @@ sudo tailscale up \
 
 # 6-1. AdvertiseRoutes 실제 적용 검증 + 재시도
 #      (--reset 이 드물게 --advertise-routes 를 무력화하는 quirk 가 있어 재설정 보강)
-sleep 3
-if ! sudo tailscale debug prefs 2>/dev/null | grep -A2 "AdvertiseRoutes" | grep -q "$VMWARE_CIDR"; then
-    echo "[WARN] Advertise routes 미적용 감지 → 재설정"
-    sudo tailscale set --advertise-routes="$VMWARE_CIDR"
-    sleep 10
-fi
+# 6-1. AdvertiseRoutes 설정 적용 (idempotent — tailscale set 은 멱등)
+echo "[INFO] Advertise routes 설정 적용"
+sudo tailscale set --advertise-routes="$VMWARE_CIDR"
+sleep 5
 
 echo ""
 echo "[OK] Tailscale 연결 완료 — 내 TS IP: $(tailscale ip -4 | head -1)"
@@ -175,10 +169,10 @@ echo "   https://login.tailscale.com/admin/machines → ${TS_HOSTNAME} → Edit 
 if [ -n "${TAILSCALE_API_KEY:-}" ] && [ -n "${TAILNET_NAME:-}" ]; then
     echo "[INFO] API 로 ${TS_HOSTNAME} 서브넷 라우트 자동 승인 시도..."
     # ★수정④ : grep 의 "proj-mgmt" → "${TS_HOSTNAME}" (큰따옴표여야 변수 치환됨)
-    DEV_ID=$( { curl -s -u "${TAILSCALE_API_KEY}:" \
-        "https://api.tailscale.com/api/v2/tailnet/${TAILNET_NAME}/devices" \
-        | grep -B5 "\"hostname\":\"${TS_HOSTNAME}\"" | grep '"id"' | head -1 \
-        | sed -E 's/.*"id":"([^"]+)".*/\1/'; } || true )
+    DEV_ID=$(curl -s -u "${TAILSCALE_API_KEY}:" \
+    "https://api.tailscale.com/api/v2/tailnet/${TAILNET_NAME}/devices" \
+    | python3 -c "import sys, json; print(next((d.get('id', '') for d in json.load(sys.stdin).get('devices', []) if d.get('hostname') == '${TS_HOSTNAME}'), ''))" \
+    || true)
     if [ -n "$DEV_ID" ]; then
         curl -s -u "${TAILSCALE_API_KEY}:" -X POST \
             "https://api.tailscale.com/api/v2/device/${DEV_ID}/routes" \

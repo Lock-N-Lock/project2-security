@@ -164,8 +164,8 @@ if [ -z "${DOCKERHUB_USER:-}" ] || [ -z "${DOCKERHUB_TOKEN:-}" ]; then
     if [ -z "$DOCKERHUB_USER" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
         warning "입력값이 비어 Docker Hub 로그인을 건너뜁니다 (나중에 재실행 가능)"
     else
-        # 파일 생성 + 권한 600
-        printf 'DOCKERHUB_USER=%s\nDOCKERHUB_TOKEN=%s\n' "$DOCKERHUB_USER" "$DOCKERHUB_TOKEN" > "$DOCKERHUB_TOKEN_FILE"
+       # 파일 생성 + 권한 600 (특수문자 안전 처리를 위해 declare -p 사용)
+        declare -p DOCKERHUB_USER DOCKERHUB_TOKEN > "$DOCKERHUB_TOKEN_FILE"
         chmod 600 "$DOCKERHUB_TOKEN_FILE"
         success "~/.dockerhub_token 생성 완료 (chmod 600)"
     fi
@@ -218,7 +218,7 @@ echo ""
 # 설치/키 입력이 모두 끝났고, docker 권한이 아직 현재 셸에 미반영이면
 # 새 셸을 띄워 docker 그룹을 즉시 적용한다.
 # ⚠️ newgrp 는 "새 셸 진입"이므로 반드시 모든 작업의 맨 끝에 위치해야 함.
-if command -v docker &>/dev/null && ! docker info &>/dev/null \
+if [ -t 0 ] && command -v docker &>/dev/null && ! docker info &>/dev/null \
    && id -nG "${SUDO_USER:-$USER}" | grep -qw docker; then
     info "docker 그룹을 즉시 적용합니다 (새 셸 진입). 종료하려면 'exit' 을 입력 후 Enter를 쳐주세요."
     exec newgrp docker
