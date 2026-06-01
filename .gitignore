@@ -28,6 +28,7 @@ secrets.*
 # 개인 시크릿 (절대 커밋 금지)
 .tailscale_key
 .dockerhub_token
+.docker_config
 .aws/
 # terraform.tfvars 에 비밀값(키 경로 등)을 넣는다면 커밋에서 제외.
 infra/terraform/terraform.tfvars

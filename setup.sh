@@ -145,7 +145,11 @@ fi
 #   - 이미 값이 채워져 있으면 → 입력 건너뛰고 그대로 사용
 #   - 토큰 발급: hub.docker.com → 계정 아이콘 → Account settings → Personal access tokens
 info "STEP 5.5/6 : Docker Hub 로그인 확인..."
-DOCKERHUB_TOKEN_FILE="${HOME}/.dockerhub_token"
+
+# 홈 디렉터리가 아닌 'project2-security 프로젝트 폴더' 내부에 저장
+DOCKER_PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DOCKERHUB_TOKEN_FILE="${DOCKER_PROJECT_DIR}/.dockerhub_token"
+PROJECT_DOCKER_CONFIG="${DOCKER_PROJECT_DIR}/.docker_config"
 
 # 기존 파일이 있으면 먼저 로드
 if [ -f "$DOCKERHUB_TOKEN_FILE" ]; then
@@ -176,15 +180,23 @@ fi
 # 값이 준비됐으면 로그인 시도
 export DOCKERHUB_USER DOCKERHUB_TOKEN   # sg 서브셸 참조용
 if [ -n "${DOCKERHUB_USER:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+
+    # 프로젝트 폴더 내부에 전용 설정 폴더를 생성
+    mkdir -p "$PROJECT_DOCKER_CONFIG"
+    export DOCKER_CONFIG="$PROJECT_DOCKER_CONFIG"
+
     if docker info &>/dev/null; then
         echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin \
             && success "Docker Hub 로그인됨: $DOCKERHUB_USER" \
             || warning "Docker Hub 로그인 실패 → 토큰 확인"
+
     elif id -nG "${SUDO_USER:-$USER}" | grep -qw docker; then
-        # 그룹은 추가됐으나 현재 셸 미반영 → sg 로 즉시 적용하여 로그인
-        sg docker -c 'echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin' \
-            && success "Docker Hub 로그인됨: $DOCKERHUB_USER" \
+        # 2. 그룹은 추가됐으나 현재 셸에 미반영된 상태라면 sg로 즉시 적용하여 로그인
+        # ★ 핵심 수정: sg 서브셸 내부에서도 DOCKER_CONFIG 격리 경로를 강제로 지정해 줍니다.
+        sg docker -c "export DOCKER_CONFIG='$PROJECT_DOCKER_CONFIG'; echo '$DOCKERHUB_TOKEN' | docker login -u '$DOCKERHUB_USER' --password-stdin" \
+            && success "프로젝트 전용 Docker Hub 로그인됨: $DOCKERHUB_USER" \
             || warning "Docker Hub 로그인 실패 → 재로그인 후 bash setup.sh 재실행"
+
     else
         warning "docker 권한 미반영 → newgrp docker 후 bash setup.sh 재실행"
     fi
@@ -221,5 +233,20 @@ echo ""
 if [ -t 0 ] && command -v docker &>/dev/null && ! docker info &>/dev/null \
    && id -nG "${SUDO_USER:-$USER}" | grep -qw docker; then
     info "docker 그룹을 즉시 적용합니다 (새 셸 진입). 종료하려면 'exit' 을 입력 후 Enter를 쳐주세요."
+    
+    if [ -d "$PROJECT_DOCKER_CONFIG" ]; then
+        grep -qF "DOCKER_CONFIG=\"$PROJECT_DOCKER_CONFIG\"" ~/.bashrc || echo "export DOCKER_CONFIG=\"$PROJECT_DOCKER_CONFIG\"" >> ~/.bashrc
+    fi
+    
     exec newgrp docker
+fi
+
+# ── 프로젝트 전용 격리 환경 변수 자동 주입 ──────────────────────
+if [ -d "$PROJECT_DOCKER_CONFIG" ]; then
+    # ★ 보정: 앞에 \n(줄바꿈)을 추가하여 기존 파일 끝에 글자가 엉겨 붙는 것을 원천 차단합니다.
+    if ! grep -qF "DOCKER_CONFIG=\"$PROJECT_DOCKER_CONFIG\"" ~/.bashrc; then
+        echo -e "\n# Docker 프로젝트 격리 환경 변수\nexport DOCKER_CONFIG=\"$PROJECT_DOCKER_CONFIG\"" >> ~/.bashrc
+    fi
+    export DOCKER_CONFIG="$PROJECT_DOCKER_CONFIG"
+    success "현재 터미널 및 향후 세션에 프로젝트 격리 환경 변수(DOCKER_CONFIG) 주입 완료!"
 fi
