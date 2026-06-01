@@ -17,7 +17,22 @@ def root():
 
 @app.post("/webhook")
 def webhook(payload: dict):
-    alertname = payload.get("alertname")
+    alertname = (
+        payload.get("alertname")
+        or payload.get("commonLabels", {}).get("alertname")
+    )
+
+    if not alertname:
+        alerts = payload.get("alerts", [])
+        if alerts:
+            alertname = alerts[0].get("labels", {}).get("alertname")
+
+    if not alertname:
+        write_critical_log("alertname not found")
+        return {
+            "status": "error",
+            "message": "alertname not found"
+        }
 
     policy = get_policy(alertname)
 
