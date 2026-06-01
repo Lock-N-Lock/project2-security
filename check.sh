@@ -1,7 +1,7 @@
 #!/bin/bash
 # =============================================================
 # 파일위치 : ~/project2-security/check.sh
-# 환경·자격증명 상태 확인 (Lock & Lock)
+# 환경·자격증명·연결 상태 확인 (Lock & Lock)
 # 실행 : bash check.sh  또는  make check
 # =============================================================
 
@@ -41,12 +41,12 @@ if command -v docker &>/dev/null; then
     if [ -n "$DOCKER_USER" ]; then
         ok "Docker Hub 로그인됨: $DOCKER_USER"
     else
-        warn "Docker Hub 미로그인 → docker login (C 트랙 push용)"
+        warn "Docker Hub 미로그인 → ~/.dockerhub_token 설정 후 bash setup.sh (또는 docker login)"
     fi
 fi
 echo ""
 
-# ── 3. AWS 자격증명 ────────────────────────────────────────
+# ── 3. AWS 자격증명 (개인 계정) ────────────────────────────
 echo "[ 3 ] AWS 자격증명 확인"
 if ACCOUNT=$(aws sts get-caller-identity --query Account --output text 2>/dev/null); then
     REGION=$(aws configure get region)
@@ -59,13 +59,55 @@ echo ""
 
 # ── 4. 프로젝트 폴더 ───────────────────────────────────────
 echo "[ 4 ] 프로젝트 폴더 확인"
-# 수정 후
 [ -d "$(dirname "$0")/infra/terraform" ] && ok "infra/terraform 존재" || fail "infra/terraform 없음 → scaffold 확인"
 echo ""
 
-# ── 5. 비용 안내 ───────────────────────────────────────────
-echo "[ 5 ] 비용 안내"
-echo "  - 실습 후 반드시 make destroy 로 비용 절감"
+# ── 5. Tailscale VPN (하이브리드 언더레이) ─────────────────
+echo "[ 5 ] Tailscale VPN 상태 확인"
+if command -v tailscale &>/dev/null; then
+    if ! systemctl is-active --quiet tailscaled 2>/dev/null; then
+        warn "tailscaled 데몬 미실행 → sudo systemctl start tailscaled"
+    else
+        TS_STATUS=$(tailscale status 2>/dev/null || echo "")
+        if [ -z "$TS_STATUS" ] || echo "$TS_STATUS" | grep -qiE "logged out|NeedsLogin"; then
+            fail "Tailscale 로그아웃 상태 → ./bootstrap_tailscale.sh"
+        else
+            ok "Tailscale 연결됨 (IP: $(tailscale ip -4 2>/dev/null | head -1))"
+            # advertise-routes(172.16.1.0/24) 광고 여부 (project1 검증값)
+            if sudo tailscale debug prefs 2>/dev/null | grep -A2 "AdvertiseRoutes" | grep -q "172.16.1.0/24"; then
+                ok "서브넷 광고 : 172.16.1.0/24 (proj-mgmt)"
+            else
+                warn "172.16.1.0/24 광고 미확인 (Admin 콘솔 승인/Pre-approved 확인)"
+            fi
+        fi
+    fi
+else
+    fail "Tailscale 미설치 → ./bootstrap_tailscale.sh"
+fi
+echo ""
+
+# ── 6. VXLAN 오버레이 (Opt 2: Tailscale 위 L2 확장) ────────
+echo "[ 6 ] VXLAN 오버레이 확인"
+if ip -d link show vxlan0 &>/dev/null; then
+    VNI=$(ip -d link show vxlan0 | grep -oP 'id \K[0-9]+' | head -1)
+    OV_IP=$(ip -4 addr show vxlan0 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
+    ok "vxlan0 존재 (VNI=${VNI:-?}, overlay IP=${OV_IP:-미할당})"
+else
+    warn "vxlan0 없음 — Opt2 미적용 상태"
+    echo "       → 이는 AWS Bastion 이 아직 없을 때의 정상 상태입니다."
+    echo "         VXLAN 은 proj-mgmt ↔ Bastion 양쪽이 있어야 성립합니다."
+    echo "       다음 순서로 적용:"
+    echo "         1) cd infra/terraform && terraform apply   (Bastion 생성)"
+    echo "         2) terraform output bastion_ts_ip          (Bastion Tailscale IP 확인)"
+    echo "         3) bootstrap_tailscale.sh 상단 ENABLE_VXLAN=true + AWS_BASTION_TS_IP 기입"
+    echo "         4) ./bootstrap_tailscale.sh 재실행 → vxlan0 생성"
+fi
+echo ""
+
+# ── 7. 비용 안내 ───────────────────────────────────────────
+echo "[ 7 ] 비용 안내"
+echo "  - 개인 AWS 계정 사용 → 실습 후 반드시 make destroy"
+echo "  - destroy 전 'make backup' 으로 DB dump → S3 보존 (데이터 유실 방지)"
 echo ""
 
 echo "============================================="
