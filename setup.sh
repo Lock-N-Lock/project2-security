@@ -4,6 +4,7 @@
 # 팀 프로젝트 환경 설정 스크립트 (Lock & Lock)
 # 대상 OS : Rocky Linux 8.x
 # 목적    : AWS CLI v2 + Terraform + Ansible + Docker 설치·검증
+#           (Tailscale/VXLAN 연결은 bootstrap_tailscale.sh 에서 별도 수행)
 # 실행    : bash setup.sh
 # =============================================================
 
@@ -66,6 +67,41 @@ else
     info "STEP 2/6 : AWS CLI 건너뜀"
 fi
 
+# ── STEP 2.5 : AWS 자격증명 확인/등록 ──────────────────────
+# 동작:
+#   - access_key / secret_key / region / output 4개가 모두 있으면 건너뜀
+#   - 하나라도 없으면 aws configure 실행하여 입력받음
+#   - 개인 계정 키 사용 (팀원 각자), region=ap-northeast-2 권장
+info "STEP 2.5/6 : AWS 자격증명 확인..."
+
+AWS_AKID=$(aws configure get aws_access_key_id     2>/dev/null || true)
+AWS_SAK=$(aws configure get aws_secret_access_key   2>/dev/null || true)
+AWS_REGION=$(aws configure get region               2>/dev/null || true)
+AWS_OUTPUT=$(aws configure get output               2>/dev/null || true)
+
+if [ -n "$AWS_AKID" ] && [ -n "$AWS_SAK" ] && [ -n "$AWS_REGION" ] && [ -n "$AWS_OUTPUT" ]; then
+    # 자격증명이 실제로 유효한지까지 한 번 확인
+    if aws sts get-caller-identity &>/dev/null; then
+        info "  AWS 자격증명 이미 설정됨 (계정 $(aws sts get-caller-identity --query Account --output text), region=$AWS_REGION) → 건너뜀"
+    else
+        warning "AWS 설정값은 있으나 인증 실패(키 만료/오타 가능) → 재설정"
+        echo "    입력값: Access Key / Secret Key / region=ap-northeast-2 / output=json"
+        aws configure
+    fi
+else
+    warning "AWS 자격증명 미설정 → aws configure 실행 (개인 키 입력)"
+    echo "    입력값: Access Key / Secret Key / region=ap-northeast-2 / output=json"
+    aws configure
+    # region/output 이 비어 있으면 기본값 보정 (Enter로 건너뛴 경우 대비)
+    [ -z "$(aws configure get region 2>/dev/null)" ] && aws configure set region ap-northeast-2
+    [ -z "$(aws configure get output 2>/dev/null)" ] && aws configure set output json
+fi
+
+# region 이 서울이 아니면 경고
+CUR_REGION=$(aws configure get region 2>/dev/null || true)
+[ -n "$CUR_REGION" ] && [ "$CUR_REGION" != "ap-northeast-2" ] && \
+    warning "현재 region=$CUR_REGION (서울 ap-northeast-2 권장)"
+
 # ── STEP 3 : Terraform ─────────────────────────────────────
 if [ "$TF_INSTALLED" = false ]; then
     info "STEP 3/6 : Terraform 설치 중..."
@@ -90,17 +126,68 @@ fi
 # ── STEP 5 : Docker (project2 신규) ────────────────────────
 if [ "$DOCKER_INSTALLED" = false ]; then
     info "STEP 5/6 : Docker 설치 중..."
-    sudo dnf remove -y podman buildah runc 2>/dev/null || true   # ← #4: Rocky8 충돌 방지 (한 줄 추가)
+    sudo dnf remove -y podman buildah runc 2>/dev/null || true   # Rocky8 충돌 방지(수업: podman buildah)
     sudo dnf install -y yum-utils -q
     sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo -q 2>/dev/null || true
+    sudo dnf makecache -q 2>/dev/null || true                    # 수업 설치법 반영(리포 캐시 갱신)
     sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -q || error "Docker 설치 실패"
     sudo systemctl enable --now docker
-    # 현재 사용자를 docker 그룹에 추가 (sudo 없이 docker 사용)
-    sudo usermod -aG docker "${SUDO_USER:-$USER}"                # ← #5: root 오등록 방지
+    sudo usermod -aG docker "${SUDO_USER:-$USER}"                # root 오등록 방지
     command -v docker &>/dev/null && success "Docker 설치 완료: $(docker --version)" || error "Docker 설치 실패"
     warning "docker 그룹 적용을 위해 재로그인 또는 'newgrp docker' 필요"
 else
     info "STEP 5/6 : Docker 건너뜀"
+fi
+
+# ── STEP 5.5 : Docker Hub 로그인 (토큰 파일 자동 생성 + 로그인) ────
+# 동작:
+#   - ~/.dockerhub_token 이 없거나 값이 비어 있으면 → 입력받아 생성(chmod 600)
+#   - 이미 값이 채워져 있으면 → 입력 건너뛰고 그대로 사용
+#   - 토큰 발급: hub.docker.com → 계정 아이콘 → Account settings → Personal access tokens
+info "STEP 5.5/6 : Docker Hub 로그인 확인..."
+DOCKERHUB_TOKEN_FILE="${HOME}/.dockerhub_token"
+
+# 기존 파일이 있으면 먼저 로드
+if [ -f "$DOCKERHUB_TOKEN_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$DOCKERHUB_TOKEN_FILE"
+fi
+
+# 값이 하나라도 비어 있으면 입력받아 (재)생성
+if [ -z "${DOCKERHUB_USER:-}" ] || [ -z "${DOCKERHUB_TOKEN:-}" ]; then
+    warning "~/.dockerhub_token 미설정 또는 비어 있음 → 개인 토큰 입력"
+    echo "    (토큰 발급: hub.docker.com → Account settings → Personal access tokens)"
+    read -rp  "    DOCKERHUB_USER (Docker Hub 아이디 입력 후 Enter): " DOCKERHUB_USER
+    read -rsp "    DOCKERHUB_TOKEN (dckr_pat_...입력, 키복사 후 마우스 우클릭 후, Enter [화면 미표시]): " DOCKERHUB_TOKEN
+    echo ""   # read -s 는 줄바꿈을 안 남기므로 수동 개행
+
+    if [ -z "$DOCKERHUB_USER" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+        warning "입력값이 비어 Docker Hub 로그인을 건너뜁니다 (나중에 재실행 가능)"
+    else
+       # 파일 생성 + 권한 600 (특수문자 안전 처리를 위해 declare -p 사용)
+        declare -p DOCKERHUB_USER DOCKERHUB_TOKEN > "$DOCKERHUB_TOKEN_FILE"
+        chmod 600 "$DOCKERHUB_TOKEN_FILE"
+        success "~/.dockerhub_token 생성 완료 (chmod 600)"
+    fi
+else
+    info "  ~/.dockerhub_token 이미 설정됨 → 입력 건너뜀 ($DOCKERHUB_USER)"
+fi
+
+# 값이 준비됐으면 로그인 시도
+export DOCKERHUB_USER DOCKERHUB_TOKEN   # sg 서브셸 참조용
+if [ -n "${DOCKERHUB_USER:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+    if docker info &>/dev/null; then
+        echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin \
+            && success "Docker Hub 로그인됨: $DOCKERHUB_USER" \
+            || warning "Docker Hub 로그인 실패 → 토큰 확인"
+    elif id -nG "${SUDO_USER:-$USER}" | grep -qw docker; then
+        # 그룹은 추가됐으나 현재 셸 미반영 → sg 로 즉시 적용하여 로그인
+        sg docker -c 'echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin' \
+            && success "Docker Hub 로그인됨: $DOCKERHUB_USER" \
+            || warning "Docker Hub 로그인 실패 → 재로그인 후 bash setup.sh 재실행"
+    else
+        warning "docker 권한 미반영 → newgrp docker 후 bash setup.sh 재실행"
+    fi
 fi
 
 # ── STEP 6 : 최종 검증 ─────────────────────────────────────
@@ -119,9 +206,20 @@ success "환경 설치 완료!"
 echo "============================================="
 echo ""
 echo "  다음 단계:"
-echo "   1) docker 그룹 적용:  newgrp docker  (또는 재로그인)"
-echo "   2) AWS 자격증명 등록:  aws configure"
-echo "        region = ap-northeast-2,  output = json"
-echo "   3) Docker Hub 로그인:  docker login   (C 트랙 push용)"
-echo "   4) 환경 점검:          make check"
+echo "   1) docker 그룹 적용:    newgrp docker  (또는 재로그인)"
+echo "   2) AWS 자격증명 등록:    aws configure       # 개인 키 / region=ap-northeast-2 / output=json"
+echo "   3) Docker Hub : setup.sh 실행 중 입력한 토큰으로 자동 로그인됨 (~/.dockerhub_token)"
+echo "   4) Tailscale VPN 연결:   TAILSCALE_AUTHKEY=tskey-auth-xxxx ./bootstrap_tailscale.sh"
+echo "        └ (Opt2) Bastion TS IP 확보 후 ENABLE_VXLAN=true 로 재실행하면 VXLAN 오버레이 구성"
+echo "   5) 환경 점검:            make check"
 echo ""
+
+# ── (맨 마지막) docker 그룹 즉시 적용 ──────────────────────
+# 설치/키 입력이 모두 끝났고, docker 권한이 아직 현재 셸에 미반영이면
+# 새 셸을 띄워 docker 그룹을 즉시 적용한다.
+# ⚠️ newgrp 는 "새 셸 진입"이므로 반드시 모든 작업의 맨 끝에 위치해야 함.
+if [ -t 0 ] && command -v docker &>/dev/null && ! docker info &>/dev/null \
+   && id -nG "${SUDO_USER:-$USER}" | grep -qw docker; then
+    info "docker 그룹을 즉시 적용합니다 (새 셸 진입). 종료하려면 'exit' 을 입력 후 Enter를 쳐주세요."
+    exec newgrp docker
+fi
