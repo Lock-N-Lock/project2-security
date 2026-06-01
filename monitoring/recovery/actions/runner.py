@@ -1,11 +1,13 @@
 import subprocess
+import shlex
 
 
 def run_command(command: str, timeout: int = 10) -> bool:
     try:
+        cmd_args = shlex.split(command)
         result = subprocess.run(
-            command,
-            shell=True,
+            cmd_args,
+            shell=False,
             timeout=timeout,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
