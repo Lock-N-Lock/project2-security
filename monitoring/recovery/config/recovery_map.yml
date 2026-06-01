@@ -1,0 +1,18 @@
+BankAppDown:
+  description: "LockBank application container is down"
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lockbank-app
+
+  command: "./actions/docker_restart.sh lockbank-app"
+
+  verify:
+    type: http
+    url: "http://localhost:8000/health"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
