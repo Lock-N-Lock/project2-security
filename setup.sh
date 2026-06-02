@@ -228,8 +228,6 @@ echo ""
 
 # ── ★ [수정 핵심부] 스마트 cd 자동 전환 기능 주입 ──────────────────────
 if [ -d "$PROJECT_DOCKER_CONFIG" ]; then
-    # 기존에 setup 스크립트가 넣었던 오염된 단순 고정식 export 라인들을 전부 깔끔하게 정화합니다.
-    sed -i '/export DOCKER_CONFIG=/d' ~/.bashrc 2>/dev/null || true
     
     # 중복 주입 방지를 위해 함수 고유 주석 존재 여부 검사 후 주입
     if ! grep -qF "# 특정 폴더 진입 시 Docker Config 자동 격리 전환" ~/.bashrc; then
@@ -246,8 +244,10 @@ cd() {
     fi
 }
 EOF
+        success "현재 터미널 세션 및 향후 세션에 스마트 cd 격리 기능 주입 완료!"
+    else
+        info "이미 .bashrc에 설정이 존재하여 추가하지 않고 건너뜁니다."
     fi
-    success "현재 터미널 세션 및 향후 세션에 스마트 cd 격리 기능 주입 완료!"
 fi
 
 # ── (맨 마지막) docker 그룹 즉시 적용 ──────────────────────
