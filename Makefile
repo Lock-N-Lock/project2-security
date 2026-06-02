@@ -4,6 +4,9 @@
 # 사용법: 레포 루트(~/project2-security)에서  make [명령어]
 # =============================================================
 
+#  Makefile을 통해 실행되는 모든 명령이 격리 폴더를 바라보게 합니다.
+export DOCKER_CONFIG := $(CURDIR)/.docker_config
+
 TF_DIR := infra/terraform
 
 .PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean
