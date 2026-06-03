@@ -1,0 +1,14 @@
+groups:
+  - name: monitoring
+
+    rules:
+      - alert: PrometheusTargetDown
+        expr: up == 0
+        for: 1m
+
+        labels:
+          severity: warning
+
+        annotations:
+          summary: Target Down
+          description: Prometheus scrape target is down.
