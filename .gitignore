@@ -47,3 +47,6 @@ venv/
 Thumbs.db
 .idea/
 .vscode/
+
+# Recovery Controller
+monitoring/recovery/logs/*.log
