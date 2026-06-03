@@ -12,3 +12,21 @@ groups:
         annotations:
           summary: Target Down
           description: Prometheus scrape target is down.
+
+      # 테스트용 Alert
+      # Prometheus → Alertmanager → Recovery Webhook 연동 검증 시 사용
+      #
+      # 사용 방법
+      # 1. 아래 주석 해제
+      # 2. Prometheus 재시작
+      # 3. Alertmanager Alert 수신 확인
+      # 4. Recovery Controller Webhook 수신 확인
+      #
+      # - alert: TestAlert
+      #   expr: vector(1)
+      #   for: 10s
+      #   labels:
+      #     severity: warning
+      #   annotations:
+      #     summary: Test Alert
+      #     description: Prometheus → Alertmanager → Recovery 테스트용 Alert
