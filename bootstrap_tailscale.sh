@@ -39,6 +39,10 @@ VNI=100                               # docker 수업 memo4 와 동일 VNI (양�
 AWS_BASTION_TS_IP=""                  # 예: 100.x.x.x  (Bastion 의 Tailscale IPv4)
 OVERLAY_LOCAL_IP="10.10.10.1/24"      # proj-mgmt 오버레이 IP (AWS Bastion 은 10.10.10.2/24)
 
+# proj-mgmt: DB(lb-db) 방향 FDB 추가 — 부팅 시 자동 적용되게 bootstrap_tailscale.sh 에
+DB_TS_IP=$(tailscale status | awk '$2=="lb-db"{print $1; exit}')
+[ -n "$DB_TS_IP" ] && bridge fdb append 00:00:00:00:00:00 dev vxlan0 dst "$DB_TS_IP"
+
 # ─────────────────────────────────────────────────────────────
 echo "============================================="
 echo "  ${TS_HOSTNAME} → Tailscale + (Opt2)VXLAN 설정"
