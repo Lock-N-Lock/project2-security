@@ -47,7 +47,7 @@ check:
 
 # ── Terraform ─────────────────────────────────────────────
 init:
-	cd $(TF_DIR) && terraform init
+	cd $(TF_DIR) && terraform init -backend-config=hcl/backend.hcl
 
 fmt:
 	cd $(TF_DIR) && terraform fmt -recursive

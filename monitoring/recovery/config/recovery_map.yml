@@ -7,7 +7,8 @@ BankAppDown:
 
   target: lockbank-app
 
-  command: "./actions/docker_restart.sh lockbank-app"
+  # 실행 권한이 누락 대비
+  command: "bash ./actions/docker_restart.sh lockbank-app"
 
   verify:
     type: http

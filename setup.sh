@@ -237,7 +237,7 @@ if [ -d "$PROJECT_DOCKER_CONFIG" ]; then
 cd() {
     builtin cd "$@" || return
     if [[ "$PWD" == *"/project2-security"* ]]; then
-        export DOCKER_CONFIG="/home/user1/project2-security/.docker_config"
+        export DOCKER_CONFIG="$(dirname "$0")/.docker_config"
     else
         # 프로젝트 폴더를 벗어나면 격리 환경변수를 해제하여 원래 쓰던 yimjongwon 계정으로 복구
         unset DOCKER_CONFIG
