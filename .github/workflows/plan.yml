@@ -40,6 +40,7 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.JUNHAN_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.JUNHAN_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.JUNHAN_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
@@ -49,6 +50,7 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.KTCLIF_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.KTCLIF_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.KTCLIF_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
@@ -58,6 +60,7 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.SANGWOO_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.SANGWOO_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.SANGWOO_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-24a36553"
             MY_TABLE="DynamoDB-terraform-lock"
@@ -67,6 +70,7 @@ jobs:
             export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
             export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
+          
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
