@@ -37,7 +37,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "db_backup_policy" {
     status = "Enabled"
 
     # ◀ 이 자리에 빈 filter 블록을 추가하여 버킷 전체 적용임을 명시합니다.
-    filter {} 
+    filter {}
 
     expiration {
       days = 7 # 데모/과제 요건에 맞게 일수 설정 (예: 7일 후 자동 삭제)

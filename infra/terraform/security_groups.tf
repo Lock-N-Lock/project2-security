@@ -162,7 +162,7 @@ resource "aws_security_group" "nat" {
     to_port     = 0
     protocol    = "-1"
     # DB의 S3 백업 및 온프레미스 Replication 통로 개방
-    cidr_blocks = concat(var.app_subnet_cidrs, var.db_subnet_cidrs) 
+    cidr_blocks = concat(var.app_subnet_cidrs, var.db_subnet_cidrs)
   }
 
   ingress {

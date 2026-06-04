@@ -16,9 +16,9 @@ terraform {
       source  = "cloudflare/cloudflare"
       version = "~> 4.0"
     }
-    tailscale = {                        # ← 추가
+    tailscale = { # ← 추가
       source  = "tailscale/tailscale"
-      version = "~> 0.16"                # 수업에서 쓰던 버전으로 맞추세요
+      version = "~> 0.16" # 수업에서 쓰던 버전으로 맞추세요
     }
   }
 
