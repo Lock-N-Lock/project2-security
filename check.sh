@@ -57,13 +57,8 @@ else
 fi
 echo ""
 
-# ── 4. 프로젝트 폴더 ───────────────────────────────────────
-echo "[ 4 ] 프로젝트 폴더 확인"
-[ -d "$(dirname "$0")/infra/terraform" ] && ok "infra/terraform 존재" || fail "infra/terraform 없음 → scaffold 확인"
-echo ""
-
-# ── 5. Tailscale VPN (하이브리드 언더레이) ─────────────────
-echo "[ 5 ] Tailscale VPN 상태 확인"
+# ── 4. Tailscale VPN (하이브리드 언더레이) ─────────────────
+echo "[ 4 ] Tailscale VPN 상태 확인"
 if command -v tailscale &>/dev/null; then
     if ! systemctl is-active --quiet tailscaled 2>/dev/null; then
         warn "tailscaled 데몬 미실행 → sudo systemctl start tailscaled"
@@ -86,26 +81,8 @@ else
 fi
 echo ""
 
-# ── 6. VXLAN 오버레이 (Opt 2: Tailscale 위 L2 확장) ────────
-echo "[ 6 ] VXLAN 오버레이 확인"
-if ip -d link show vxlan0 &>/dev/null; then
-    VNI=$(ip -d link show vxlan0 | grep -oP 'id \K[0-9]+' | head -1)
-    OV_IP=$(ip -4 addr show vxlan0 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)
-    ok "vxlan0 존재 (VNI=${VNI:-?}, overlay IP=${OV_IP:-미할당})"
-else
-    warn "vxlan0 없음 — Opt2 미적용 상태"
-    echo "       → 이는 AWS Bastion 이 아직 없을 때의 정상 상태입니다."
-    echo "         VXLAN 은 proj-mgmt ↔ Bastion 양쪽이 있어야 성립합니다."
-    echo "       다음 순서로 적용:"
-    echo "         1) cd infra/terraform && terraform apply   (Bastion 생성)"
-    echo "         2) terraform output bastion_ts_ip          (Bastion Tailscale IP 확인)"
-    echo "         3) bootstrap_tailscale.sh 상단 ENABLE_VXLAN=true + AWS_BASTION_TS_IP 기입"
-    echo "         4) ./bootstrap_tailscale.sh 재실행 → vxlan0 생성"
-fi
-echo ""
-
-# ── 7. 비용 안내 ───────────────────────────────────────────
-echo "[ 7 ] 비용 안내"
+# ── 5. 비용 안내 ───────────────────────────────────────────
+echo "[ 5 ] 비용 안내"
 echo "  - 개인 AWS 계정 사용 → 실습 후 반드시 make destroy"
 echo "  - destroy 전 'make backup' 으로 DB dump → S3 보존 (데이터 유실 방지)"
 echo ""
