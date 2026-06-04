@@ -57,6 +57,7 @@ jobs:
             export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
             export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
             export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
+            export TF_VAR_cloudflare_api_token="${{ secrets.JONGWON_CF_TOKEN }}"
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
