@@ -97,4 +97,9 @@ resource "aws_acm_certificate_validation" "main" {
     ] : [
     local.acm_dvo.resource_record_name
   ]
+
+  depends_on = [
+    cloudflare_record.acm_validation,  # ★ cloudflare 분기 race 차단 (핵심)
+    aws_route53_record.acm_validation, # route53는 fqdn 참조로 이미 암묵 의존, 안전상 명시
+  ]
 }

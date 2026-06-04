@@ -30,3 +30,10 @@ route53_zone_name = "example.com"
 # ── Tailscale ──
 tailnet_name      = "your-email@gmail.com"          # ◀ 여기에 ~/.tailscale_key 의 'TAILNET_NAME' 값을 붙여넣으세요!
 tailscale_api_key = "tskey-api-your-api-key-here" # # ◀ 여기에 ~/.tailscale_key 의 'TAILSCALE_API_KEY' 값을 붙여넣으세요!
+
+# terraform.tfvars — 초기 staging (앱 배포 전)
+# 0대면 인스턴스가 없으니 health_check_type="ELB"를 굳이 안 건드려도 thrash가 원천적으로 안 생깁니다(검사할 대상이 없음).
+# 해제(≈6/8): 이미지가 Docker Hub에 올라오면 → asg_min=1, asg_desired=1 + launch template에 docker pull/run 추가 → 끝.
+asg_min     = 0
+asg_desired = 0
+# (green ASG는 이미 코드에서 min=0/desired=0 → 그대로)
