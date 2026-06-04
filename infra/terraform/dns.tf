@@ -93,9 +93,9 @@ resource "aws_acm_certificate_validation" "main" {
   certificate_arn = aws_acm_certificate.main[0].arn
 
   validation_record_fqdns = var.dns_provider == "route53" ? [
-    aws_route53_record.acm_validation[0].fqdn
+    one(aws_route53_record.acm_validation[*].fqdn)
     ] : [
-    local.acm_dvo.resource_record_name
+    try(local.acm_dvo.resource_record_name, "")
   ]
 
   depends_on = [

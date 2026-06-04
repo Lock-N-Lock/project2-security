@@ -57,6 +57,23 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy" {
   treat_missing_data = "notBreaching"
 }
 
+resource "aws_cloudwatch_metric_alarm" "tg_unhealthy_green" {
+  alarm_name          = "${var.project}-tg-unhealthy-green"
+  namespace           = "AWS/ApplicationELB"
+  metric_name         = "UnHealthyHostCount"
+  statistic           = "Maximum"
+  period              = 60
+  evaluation_periods  = 2
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  dimensions = {
+    LoadBalancer = aws_lb.main.arn_suffix
+    TargetGroup  = aws_lb_target_group.green.arn_suffix
+  }
+  alarm_actions      = [aws_sns_topic.alerts.arn]
+  treat_missing_data = "notBreaching"
+}
+
 # 트래픽 폭주 시 Green ASG 오토스케일링 정책 추가
 # 목적: [시나리오 3 & 7] 배포 전환이 완료되어 운영망이 Green이 되었을 때, 
 # Locust 트래픽 폭주가 발생해도 정상적으로 Scale-Out이 트리거되도록 보장합니다.

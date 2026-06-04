@@ -30,7 +30,7 @@ resource "aws_instance" "nat" {
     iptables -P FORWARD ACCEPT
     iptables -I FORWARD -j ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
-    service iptables save
+    iptables-save > /etc/sysconfig/iptables
   EOF
 
   tags = { Name = "${var.project}-nat" }
@@ -143,6 +143,8 @@ resource "aws_autoscaling_group" "blue" {
     value               = "blue"
     propagate_at_launch = true
   }
+
+  depends_on = [aws_route.app_nat]
 }
 
 # ── App ASG : Green (초기 desired=0, 전환 시 확장) ────────
@@ -165,6 +167,8 @@ resource "aws_autoscaling_group" "green" {
     value               = "green"
     propagate_at_launch = true
   }
+
+  depends_on = [aws_route.app_nat]
 }
 
 # ── DB EC2 (PostgreSQL 컨테이너 호스트) ───────────────────
@@ -195,4 +199,6 @@ resource "aws_instance" "db" {
   }
 
   tags = { Name = "${var.project}-db" }
+
+  depends_on = [aws_route.db_nat]
 }
