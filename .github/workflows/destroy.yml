@@ -26,26 +26,31 @@ jobs:
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.JUNHAN_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JUNHAN_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="1.2.3.4/32"
           elif [ "${{ github.actor }}" = "KTCLIF" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.KTCLIF_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.KTCLIF_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="1.2.3.4/32"
           elif [ "${{ github.actor }}" = "tkddn3901" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.SANGWOO_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.SANGWOO_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="1.2.3.4/32"
           elif [ "${{ github.actor }}" = "yimjongwon" ]; then
             MY_BUCKET="tfstate-bucket-24a36553"
             MY_TABLE="DynamoDB-terraform-lock"
             export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
+            export TF_VAR_admin_ingress_cidr="1.2.3.4/32"
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
             export AWS_ACCESS_KEY_ID="${{ secrets.ZEOXIXX_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.ZEOXIXX_SECRET_KEY }}"
+            export TF_VAR_admin_ingress_cidr="1.2.3.4/32"
           fi
 
           # hcl 파일에서 주입
