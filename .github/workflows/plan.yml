@@ -55,6 +55,8 @@ jobs:
             export AWS_ACCESS_KEY_ID="${{ secrets.JONGWON_ACCESS_KEY }}"
             export AWS_SECRET_ACCESS_KEY="${{ secrets.JONGWON_SECRET_KEY }}"   
             export TF_VAR_admin_ingress_cidr="${{ secrets.JONGWON_IP }}"
+            export TF_VAR_tailnet_name="${{ secrets.JONGWON_TAILNET }}"
+            export TF_VAR_tailscale_api_key="${{ secrets.JONGWON_TS_API_KEY }}"
           elif [ "${{ github.actor }}" = "zeoxixx" ]; then
             MY_BUCKET=""
             MY_TABLE=""
