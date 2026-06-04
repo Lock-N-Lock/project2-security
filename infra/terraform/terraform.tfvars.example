@@ -17,8 +17,8 @@ enable_https = true
 
 # [팀원] Route53 사용 시:
 dns_provider      = "route53"
-domain_name       = "lockbank.example.com"
-route53_zone_name = "example.com"
+domain_name       = "lockbank.cloudyim.store"
+route53_zone_name = "cloudyim.store"
 
 # [신준한] Cloudflare 사용 시:
 # dns_provider       = "cloudflare"
