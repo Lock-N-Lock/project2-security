@@ -4,11 +4,11 @@ services:
     container_name: lb-prometheus
     restart: unless-stopped
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--config.file=/etc/prometheus/prometheus.yaml"
       - "--storage.tsdb.path=/prometheus"
     ports:
       - "9090:9090"
@@ -22,10 +22,10 @@ services:
     container_name: lb-alertmanager
     restart: unless-stopped
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
       - alertmanager_data:/alertmanager
     command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--config.file=/etc/alertmanager/alertmanager.yaml"
       - "--storage.path=/alertmanager"
     ports:
       - "9093:9093"
@@ -47,6 +47,59 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - monitoring
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: lb-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: lb-nginx-exporter
+    command:
+      - -nginx.scrape-uri=http://nginx/stub_status
+    ports:
+      - "9113:9113"
+    depends_on:
+      - nginx
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: lb-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    command:
+      - "-config.file=/etc/loki/loki-config.yaml"
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: lb-promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ./recovery/logs:/app/logs:ro
+    command:
+      - "-config.file=/etc/promtail/promtail-config.yaml"
+    depends_on:
+      - loki
     networks:
       - monitoring
 
@@ -67,6 +120,7 @@ volumes:
   prometheus_data:
   alertmanager_data:
   grafana_data:
+  loki_data:
 
 networks:
   monitoring:

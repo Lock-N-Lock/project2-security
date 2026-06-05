@@ -2,7 +2,7 @@ import yaml
 from pathlib import Path
 
 
-POLICY_PATH = Path(__file__).resolve().parent.parent / "config" / "recovery_map.yml"
+POLICY_PATH = Path(__file__).resolve().parent.parent / "config" / "recovery_map.yaml"
 
 
 def load_policies():

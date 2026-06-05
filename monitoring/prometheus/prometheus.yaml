@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
 
 rule_files:
-  - /etc/prometheus/rules/*.yml
+  - /etc/prometheus/rules/*.yaml
 
 alerting:
   alertmanagers:
@@ -20,3 +20,13 @@ scrape_configs:
     static_configs:
       - targets:
           - alertmanager:9093
+  
+  - job_name: grafana
+    static_configs:
+      - targets:
+          - grafana:3000
+
+  - job_name: nginx-exporter
+    static_configs:
+      - targets:
+          - nginx-exporter:9113
