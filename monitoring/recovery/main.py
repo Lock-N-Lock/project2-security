@@ -1,4 +1,6 @@
 import time
+import json
+from pathlib import Path
 from fastapi import FastAPI
 
 from actions.runner import run_command
@@ -6,11 +8,34 @@ from policy.loader import get_policy
 from utils.logger import write_recovery_log, write_critical_log
 from verify.http import verify_http
 
+STATE_FILE = Path("/app/logs/recovery_state.json")
+
+
+def load_state():
+    if not STATE_FILE.exists():
+        return {}
+
+    try:
+        with STATE_FILE.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_state(state):
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = STATE_FILE.with_suffix(".tmp")
+
+    with tmp_file.open("w", encoding="utf-8") as f:
+        json.dump(state, f, indent=2)
+
+    tmp_file.replace(STATE_FILE)
+
 
 app = FastAPI()
 
 active_recoveries = set()
-last_recovery_at = {}
+last_recovery_at = load_state()
 
 
 @app.get("/")
@@ -94,6 +119,7 @@ def webhook(payload: dict):
         if not action_success:
             write_critical_log(f"action failed: {alertname}")
             last_recovery_at[lock_key] = time.time()
+            save_state(last_recovery_at)
             return {
                 "status": "failed",
                 "alertname": alertname,
@@ -119,6 +145,7 @@ def webhook(payload: dict):
             if verify_success:
                 write_recovery_log(f"verify success: {alertname}")
                 last_recovery_at[lock_key] = time.time()
+                save_state(last_recovery_at)
                 return {
                     "status": "success",
                     "alertname": alertname,
@@ -129,6 +156,7 @@ def webhook(payload: dict):
 
             write_critical_log(f"verify failed: {alertname}")
             last_recovery_at[lock_key] = time.time()
+            save_state(last_recovery_at)
             return {
                 "status": "failed",
                 "alertname": alertname,
@@ -140,6 +168,7 @@ def webhook(payload: dict):
 
         write_recovery_log(f"verify skipped: {alertname}")
         last_recovery_at[lock_key] = time.time()
+        save_state(last_recovery_at)
         return {
             "status": "success",
             "alertname": alertname,

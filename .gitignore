@@ -50,3 +50,5 @@ Thumbs.db
 
 # Recovery Controller
 monitoring/recovery/logs/*.log
+monitoring/recovery/logs/recovery_state.json
+monitoring/recovery/logs/recovery_state.tmp

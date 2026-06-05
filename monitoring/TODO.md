@@ -1,6 +1,6 @@
 # Monitoring TODO
 
-## Recovery
+## Recovery Hardening
 
 - [ ] docker inspect 기반 조회 리팩토링
   - 출처: PR #10 Review
@@ -22,24 +22,61 @@
   - 출처: PR #14 Gemini Review
   - 답변: "docker-socket-proxy 또는 권한 제한 구조 검토"
 
+- [x] Recovery Lock / Cooldown 구현
+  - 목적: 동일 Alert 반복 수신 시 중복 복구 실행 방지
+  - 범위: #19 Hardening 반영
+  - 방식: active_recoveries 기반 Lock, recovery_state.json 기반 Cooldown 상태 유지
+
 ## Alert / Recovery Policy
 
+### 반영 완료
+
+- [x] YAML 파일 확장자 `.yaml` 통일
+  - 대상: prometheus, alertmanager, alert_rules, recovery_map
+
+- [x] 운영 컴포넌트 Alert Rule 추가
+  - 대상: PrometheusDown, AlertmanagerDown, GrafanaDown, NginxExporterDown
+
+- [x] 운영 컴포넌트 Recovery Policy 추가
+  - 대상: PrometheusDown, AlertmanagerDown, GrafanaDown, NginxExporterDown
+  - 정책: auto_recovery / notify=false / maintenance.log
+
+- [x] Grafana datasource에 Loki 추가
+  - 목적: Recovery / Event Log 조회 기반 구성
+
+- [x] Loki / Promtail 기반 로그 수집 구성
+  - 대상: recovery.log, maintenance.log, event.log, critical.log
+  - Grafana Explore 쿼리: `{job="recovery-logs"}`
+
+### 확인 필요
+
 - [ ] B Track App 정보 확인 후 BankAppDown 정책 값 확정
-- 확인 필요: App container name, Health endpoint, Prometheus job_name
-- 현재 상태: recovery_map.yaml에 TODO 값으로 선반영
+  - 확인 필요: App container name, Health endpoint, Prometheus job_name
+  - 현재 상태: recovery_map.yaml에 TODO 값으로 선반영
 
 - [ ] Security Alert metric 이름 확정
-- 확인 필요: Login failure metric name, Rate limit metric name
-- 대상: HighLoginFailureRate, RateLimitTriggered
-
-- [ ] 운영 컴포넌트 복구 정책 확정
-- 대상: GrafanaDown, AlertmanagerDown
-- 확인 필요: 실제 container name, verify URL, Telegram 알림 여부
-
-- [ ] Recovery Lock 구현
-- 목적: 동일 Alert 반복 수신 시 중복 복구 실행 방지
-- 범위: #19 Hardening 작업
+  - 확인 필요: Login failure metric name, Rate limit metric name
+  - 대상: HighLoginFailureRate, RateLimitTriggered
 
 - [ ] PostgresDown 정책 결정
-- 후보: notify_only / Replica Promote / Failover
-- 현재 상태: #19 범위에서는 보류
+  - 현재 상태: DB 설치/구성 여부 미확인
+  - 후보: notify_only / Replica Promote / Failover
+  - #19 범위에서는 주석 보류
+
+- [ ] CloudWatch Alarm Grafana 반영 방식 확정
+  - 대상: ALB5xxHigh, TargetGroupUnhealthy, TargetGroupUnhealthyGreen, ASGScaleOut
+  - 현재 상태: Terraform cloudwatch.tf에 Alarm 정의 존재
+  - 방향: Grafana CloudWatch datasource / Alert History 연계
+
+## Dashboard / History
+
+- [x] Recovery 로그 조회 기반 구성
+  - Loki / Promtail로 Recovery Controller 로그 수집 확인
+  - Grafana Explore에서 `{job="recovery-logs"}` 조회 가능
+
+- [ ] Dashboard Panel 구성
+  - Security
+  - Application
+  - Infrastructure
+  - Recovery
+  - Event Timeline / Alert History
