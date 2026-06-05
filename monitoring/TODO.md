@@ -27,6 +27,16 @@
   - 출처: PR #14 Gemini Review
   - 답변: "docker-socket-proxy 또는 권한 제한 구조 검토"
 
+- [ ] Recovery Action 비동기 처리 검토
+  - 출처: PR #19 Gemini Review
+  - 목적: Alertmanager Webhook Timeout 방지
+  - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
+
+- [ ] 운영 컴포넌트 Self-Monitoring 한계 검토
+  - 출처: PR #19 Gemini Review
+  - 대상: PrometheusDown, AlertmanagerDown
+  - 방향: 외부 Health Check 또는 별도 Monitoring 계층 검토
+
 - [x] Recovery Lock / Cooldown 구현 및 강화
   - 목적: 동일 Alert 반복 수신 시 중복 복구 실행 방지
   - 범위: #19 Hardening 반영
