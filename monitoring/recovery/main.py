@@ -9,6 +9,9 @@ from verify.http import verify_http
 
 app = FastAPI()
 
+active_recoveries = set()
+last_recovery_at = {}
+
 
 @app.get("/")
 def root():
@@ -55,53 +58,95 @@ def webhook(payload: dict):
             "message": "no command defined"
         }
 
-    action_success = run_command(command)
+    target = policy.get("target", "unknown")
+    lock_key = f"{alertname}:{target}"
+    cooldown = int(policy.get("cooldown", 0))
+    now = time.time()
 
-    if not action_success:
-        write_critical_log(f"action failed: {alertname}")
+    if lock_key in active_recoveries:
+        write_recovery_log(f"locked: recovery already running: {lock_key}")
         return {
-            "status": "failed",
+            "status": "locked",
             "alertname": alertname,
-            "stage": "action",
-            "command": command
+            "target": target,
+            "message": "recovery already running"
         }
 
-    write_recovery_log(f"action success: {alertname}")
-    time.sleep(2)
+    last_run = last_recovery_at.get(lock_key)
 
-    verify = policy.get("verify", {})
-
-    if verify.get("type") == "http":
-        verify_url = verify.get("url")
-        verify_timeout = verify.get("timeout", 5)
-
-        verify_success = verify_http(
-            verify_url,
-            timeout=verify_timeout
+    if last_run and cooldown > 0 and now - last_run < cooldown:
+        remaining = round(cooldown - (now - last_run), 2)
+        write_recovery_log(
+            f"cooldown: recovery skipped: {lock_key}, remaining={remaining}s"
         )
+        return {
+            "status": "cooldown",
+            "alertname": alertname,
+            "target": target,
+            "remaining": remaining
+        }
 
-        if verify_success:
-            write_recovery_log(f"verify success: {alertname}")
+    active_recoveries.add(lock_key)
+
+    try:
+        action_success = run_command(command)
+
+        if not action_success:
+            write_critical_log(f"action failed: {alertname}")
+            last_recovery_at[lock_key] = time.time()
             return {
-                "status": "success",
+                "status": "failed",
                 "alertname": alertname,
-                "command": command,
-                "verify": "success"
+                "target": target,
+                "stage": "action",
+                "command": command
             }
 
-        write_critical_log(f"verify failed: {alertname}")
+        write_recovery_log(f"action success: {alertname}")
+        time.sleep(2)
+
+        verify = policy.get("verify", {})
+
+        if verify.get("type") == "http":
+            verify_url = verify.get("url")
+            verify_timeout = verify.get("timeout", 5)
+
+            verify_success = verify_http(
+                verify_url,
+                timeout=verify_timeout
+            )
+
+            if verify_success:
+                write_recovery_log(f"verify success: {alertname}")
+                last_recovery_at[lock_key] = time.time()
+                return {
+                    "status": "success",
+                    "alertname": alertname,
+                    "target": target,
+                    "command": command,
+                    "verify": "success"
+                }
+
+            write_critical_log(f"verify failed: {alertname}")
+            last_recovery_at[lock_key] = time.time()
+            return {
+                "status": "failed",
+                "alertname": alertname,
+                "target": target,
+                "stage": "verify",
+                "command": command,
+                "verify": "failed"
+            }
+
+        write_recovery_log(f"verify skipped: {alertname}")
+        last_recovery_at[lock_key] = time.time()
         return {
-            "status": "failed",
+            "status": "success",
             "alertname": alertname,
-            "stage": "verify",
+            "target": target,
             "command": command,
-            "verify": "failed"
+            "verify": "skipped"
         }
 
-    write_recovery_log(f"verify skipped: {alertname}")
-    return {
-        "status": "success",
-        "alertname": alertname,
-        "command": command,
-        "verify": "skipped"
-    }
+    finally:
+        active_recoveries.discard(lock_key)
