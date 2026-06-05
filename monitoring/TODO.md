@@ -2,6 +2,11 @@
 
 ## Recovery Hardening
 
+- [ ] CloudWatch Alarm Telegram 알림 연동
+  - 흐름: CloudWatch Alarm → SNS → Lambda → Telegram
+  - 현재 상태: CloudWatch Alarm → SNS Topic 연결 완료
+  - 필요 작업: Lambda, IAM Role, SNS Subscription, Telegram Bot Token / Chat ID 변수 구성
+
 - [ ] docker inspect 기반 조회 리팩토링
   - 출처: PR #10 Review
   - 답변: "추후 리팩토링 단계에서 검토"
@@ -22,7 +27,7 @@
   - 출처: PR #14 Gemini Review
   - 답변: "docker-socket-proxy 또는 권한 제한 구조 검토"
 
-- [x] Recovery Lock / Cooldown 구현
+- [x] Recovery Lock / Cooldown 구현 및 강화
   - 목적: 동일 Alert 반복 수신 시 중복 복구 실행 방지
   - 범위: #19 Hardening 반영
   - 방식: active_recoveries 기반 Lock, recovery_state.json 기반 Cooldown 상태 유지
