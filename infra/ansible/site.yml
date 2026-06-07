@@ -33,4 +33,4 @@
         name: pg_dump_to_s3
         minute: "0"
         hour: "3"
-        job: "docker exec lockbank-db pg_dump -U postgres lockbank | gzip | aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"
+        job: "docker exec -e PGPASSWORD='{{ db_password }}' lockbank-db pg_dump -U postgres lockbank | gzip | aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"

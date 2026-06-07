@@ -31,8 +31,8 @@ terraform {
   }
   # terraform 상태 관리를 위한 remote backend 설정
   backend "s3" {
-    # 비워둔 값은 외부 파일(backend.hcl)에서 채우기
-    bucket         = "tfstate-bucket-bbf0ea70" # 미리 생성한 s3 버킷의 이름
+    # bucketd은 외부 파일(terraform/hcl/backend.hcl)에서 채우기
+    # bucket 은 개인별(S3 전역 고유) → -backend-config=hcl/backend.hcl 로 주입
     key            = "infra/terraform.tfstate" # /infra/하위에 만들어 지도록
     region         = "ap-northeast-2"
     dynamodb_table = "lb-tf-lock" # 미리 준비된 dynamodb 테이블의 이름을 명시하면 lock 상태가 자동으로 관리된다.

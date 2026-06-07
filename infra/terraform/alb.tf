@@ -108,7 +108,7 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06" # 최신 TLS 정책
-  certificate_arn   = var.dns_provider == "none" ? aws_acm_certificate.cert[0].arn : aws_acm_certificate_validation.cert[0].certificate_arn
+  certificate_arn   = var.dns_provider == "none" ? aws_acm_certificate.cert[0].arn : one(aws_acm_certificate_validation.cert[*].certificate_arn)
 
   default_action {
     type             = "forward"

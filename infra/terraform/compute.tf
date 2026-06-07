@@ -40,19 +40,31 @@ resource "aws_instance" "nat" {
   user_data = <<-EOF
     #!/bin/bash
     set -eux
-    # 1. IP 포워딩 활성화
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl -p /etc/sysctl.d/99-nat.conf
-    
-    # 2. iptables 설치 및 포워딩 전면 허용 (이 부분이 핵심!)
-    dnf install -y iptables iptables-services
-    systemctl enable --now iptables
+
+    # AL2023: iptables-services 없음 → 규칙 직접 적용 + systemd로 부팅 시 재적용
     iptables -P FORWARD ACCEPT
     iptables -I FORWARD -j ACCEPT
-
-    # 3. 내부망(10.0.0.0/16) -> 인터넷 마스커레이드
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
-    iptables-save > /etc/sysconfig/iptables
+
+    cat <<'SYSTEMD' > /etc/systemd/system/nat.service
+    [Unit]
+    Description=NAT Instance Port Forwarding
+    After=network.target
+
+    [Service]
+    Type=oneshot
+    RemainAfterExit=yes
+    ExecStart=/sbin/iptables -P FORWARD ACCEPT
+    ExecStart=/sbin/iptables -I FORWARD -j ACCEPT
+    ExecStart=/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
+    
+    [Install]
+    WantedBy=multi-user.target
+    SYSTEMD
+
+    systemctl enable nat.service
   EOF
 
   tags = { Name = "${var.project}-nat" } # lb-nat

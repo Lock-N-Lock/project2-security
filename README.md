@@ -74,18 +74,34 @@ make check                # ③ 환경 점검
 
 ## 인프라 배포 (Terraform)
 
-초기 환경 세팅 완료 후, AWS 인프라를 프로비저닝합니다.
+초기 환경 세팅(`setup.sh`) 완료 후 프로비저닝합니다.
+state는 **개인별 S3 backend + DynamoDB lock**을 쓰므로, 최초 1회 `init/`로 백엔드 리소스를 만듭니다.
 
 ```bash
-cd infra/terraform
-make init                 # terraform init
-make plan                 # 변경 미리보기
-make apply                # 인프라 생성 (+ Ansible 자동 구성)
-make output               # Bastion·EC2 IP 등 출력 확인
-make destroy              # 실습 후 리소스 삭제 (비용 절감)
+# ① (최초 1회) state용 S3 버킷 + DynamoDB 락 테이블 생성
+cd infra/terraform/init
+terraform init && terraform apply
+terraform output s3_bucket_name        # 생성된 본인 버킷명 확인
+
+# ② backend.hcl 작성 (개인 버킷명 입력, gitignore됨)
+cd ..
+cp hcl/backend.hcl.example hcl/backend.hcl
+#   hcl/backend.hcl 의 bucket = "..." 에 ①의 버킷명 입력
+
+# ③ 인프라 생성
+make init        # terraform init -backend-config=hcl/backend.hcl (자동)
+make plan        # 변경 미리보기
+make apply       # 인프라 생성 (+ App 컨테이너 user_data 자동 기동)
+make output      # Bastion·EC2 IP·ARN 출력
+
+# ④ DB 컨테이너 배포 (proj-mgmt 로컬, apply 이후)
+make deploy-db   # PostgreSQL 컨테이너 + S3 백업 cron
+
+make destroy     # 실습 후 리소스 삭제 (비용 절감)
 ```
 
-> ⚠️ 개인 AWS 계정 사용 → 실습 후 반드시 `make destroy`. destroy 전 `make backup`으로 DB dump를 S3에 보존합니다.
+> ⚠️ 개인 AWS 계정 → 실습 후 반드시 `make destroy`.
+> `hcl/backend.hcl`·`infra/ansible/group_vars/database.yml`은 개인값이라 gitignore → 각자 `.example`에서 복사.
 
 ---
 
