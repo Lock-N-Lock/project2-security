@@ -27,7 +27,7 @@
   - 출처: PR #14 Gemini Review
   - 답변: "docker-socket-proxy 또는 권한 제한 구조 검토"
 
-- [ ] Recovery Action 비동기 처리 검토
+- [x] Recovery Action 비동기 처리 검토
   - 출처: PR #19 Gemini Review
   - 목적: Alertmanager Webhook Timeout 방지
   - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
@@ -107,6 +107,15 @@
   - Dashboard JSON Repository 관리
   - Grafana 자동 로드 확인
   - Provisioned Dashboard 검증 완료
+  - Event Timeline / Alert History
 
-- [ ] Event Timeline / Alert History
+- [ ] Recovery Metrics 구성
+  - 대상:
+    - recovery_attempt_total
+    - recovery_success_total
+    - recovery_failed_total
+  - 필요 작업:
+    - Recovery Controller 메트릭 노출
+    - Prometheus Scrape 설정
+    - Grafana Recovery 패널 연동 검증
 
