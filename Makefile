@@ -8,8 +8,9 @@
 export DOCKER_CONFIG := $(CURDIR)/.docker_config
 
 TF_DIR := infra/terraform
+TF_DIR2 := infra/ansible
 
-.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean
+.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db service
 
 # 기본 실행 (make)
 help:
@@ -29,6 +30,8 @@ help:
 	@echo "  make plan        변경 미리보기 (적용 안 함)"
 	@echo "  make apply  	  인프라 생성 (확인 프롬프트)"
 	@echo "  make apply-auto  인프라 생성 (자동 승인)"
+	@echo "  make deploy-db   DB 컨테이너 배포 (apply 이후, proj-mgmt)"
+	@echo "  make service     인프라 + DB 한 번에 (apply-auto + deploy-db)"
 	@echo "  make output      생성된 IP·ID 출력"
 	@echo "  make destroy     인프라 전체 삭제 (자동 승인)"
 	@echo ""
@@ -64,6 +67,13 @@ apply:
 apply-auto:
 	cd $(TF_DIR) && terraform apply --auto-approve -parallelism=3
 
+# ── Ansible (DB 배포) ─────────────────────────────────────
+deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
+	cd $(TF_DIR2) && ansible-playbook site.yml
+
+## 인프라 + DB까지 한 번에
+service: apply-auto deploy-db   
+
 output:
 	@echo ""
 	@echo "=== 생성된 리소스 출력 ==="
@@ -81,7 +91,8 @@ destroy:
 clean:
 	@echo "자동 생성 파일 삭제 중..."
 	rm -f  $(TF_DIR)/*.pem
-	rm -f  $(TF_DIR)/inventory.yml
-	rm -f  $(TF_DIR)/ansible.cfg
+	rm -f  $(TF_DIR)/*.pem.pub
 	rm -rf $(TF_DIR)/.terraform
+	rm -f  $(TF_DIR2)/inventory.yml
+	rm -f  $(TF_DIR2)/ansible.cfg
 	@echo "정리 완료 (.terraform.lock.hcl 은 보존)"

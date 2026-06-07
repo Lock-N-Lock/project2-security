@@ -5,6 +5,23 @@
 # 파일위치 : ~/project2-security/infra/terraform/compute.tf
 # =============================================================
 
+# ── SSH 키페어 (Terraform이 생성·관리) ────────────────────
+resource "tls_private_key" "pk" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "aws_key_pair" "kp" {
+  key_name   = "${var.project}-key" # lb-key
+  public_key = tls_private_key.pk.public_key_openssh
+}
+
+resource "local_file" "ssh_key" {
+  filename        = "${path.module}/${var.project}-key.pem"
+  content         = tls_private_key.pk.private_key_pem
+  file_permission = "0600"
+}
+
 # ── 최신 AMI (Amazon Linux 2023) ──────────────────────────
 data "aws_ssm_parameter" "al2023" {
   name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
@@ -14,38 +31,43 @@ data "aws_ssm_parameter" "al2023" {
 resource "aws_instance" "nat" {
   ami                         = data.aws_ssm_parameter.al2023.value # AL2023 재사용
   instance_type               = var.nat_instance_type
-  subnet_id                   = aws_subnet.public[0].id
-  vpc_security_group_ids      = [aws_security_group.nat.id]
+  subnet_id                   = aws_subnet.public_subnet[0].id
+  vpc_security_group_ids      = [aws_security_group.nat_sg.id]
   associate_public_ip_address = true
   source_dest_check           = false
-  key_name                    = var.key_name
+  key_name                    = aws_key_pair.kp.key_name
 
   user_data = <<-EOF
     #!/bin/bash
     set -eux
+    # 1. IP 포워딩 활성화
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl -p /etc/sysctl.d/99-nat.conf
+    
+    # 2. iptables 설치 및 포워딩 전면 허용 (이 부분이 핵심!)
     dnf install -y iptables iptables-services
     systemctl enable --now iptables
     iptables -P FORWARD ACCEPT
     iptables -I FORWARD -j ACCEPT
+
+    # 3. 내부망(10.0.0.0/16) -> 인터넷 마스커레이드
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
     iptables-save > /etc/sysconfig/iptables
   EOF
 
-  tags = { Name = "${var.project}-nat" }
+  tags = { Name = "${var.project}-nat" } # lb-nat
 }
 
 # 프라이빗(App) 0.0.0.0/0 → NAT instance
 resource "aws_route" "app_nat" {
-  route_table_id         = aws_route_table.private_app.id
+  route_table_id         = aws_route_table.app_rt.id
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_instance.nat.primary_network_interface_id
 }
 
 # 프라이빗(DB) 0.0.0.0/0 → NAT instance (egress-only)
 resource "aws_route" "db_nat" {
-  route_table_id         = aws_route_table.private_db.id
+  route_table_id         = aws_route_table.db_rt.id
   destination_cidr_block = "0.0.0.0/0"
   network_interface_id   = aws_instance.nat.primary_network_interface_id
 }
@@ -58,15 +80,18 @@ resource "aws_route" "db_nat" {
 resource "aws_instance" "bastion" {
   ami                         = data.aws_ssm_parameter.al2023.value
   instance_type               = var.bastion_instance_type
-  subnet_id                   = aws_subnet.public[0].id
-  vpc_security_group_ids      = [aws_security_group.bastion.id]
+  subnet_id                   = aws_subnet.public_subnet[0].id
+  vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
   associate_public_ip_address = true
-  key_name                    = var.key_name
+  key_name                    = aws_key_pair.kp.key_name
   source_dest_check           = false # ← 서브넷 라우터 가동을 위한 필수 설정
 
   user_data = <<-EOF
     #!/bin/bash
+    # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
+    
+    # 1. 호스트네임 및 시스템 기본 설정
     hostnamectl set-hostname "${var.project}-bastion"
     
     # 외부망 통신 대기
@@ -97,18 +122,20 @@ resource "aws_instance" "bastion" {
 
 # ── App Launch Template (Blue/Green 공용 베이스) ──────────
 resource "aws_launch_template" "app" {
-  name_prefix   = "${var.project}-app-"
-  image_id      = data.aws_ssm_parameter.al2023.value
+  name_prefix = "${var.project}-app-"
+  # 비우면 SSM 최신 AL2023(공유 기본), app_ami_id 채우면 Packer AMI(데모 가속, 선택)
+  image_id      = var.app_ami_id != "" ? var.app_ami_id : data.aws_ssm_parameter.al2023.value
   instance_type = var.app_instance_type
-  key_name      = var.key_name
+  key_name      = aws_key_pair.kp.key_name
 
-  vpc_security_group_ids = [aws_security_group.app.id]
+  vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  # 최소 부트스트랩(Docker). 앱 배포·Swarm join 은 B/C 트랙이 Ansible/Actions 로 수행.
+  # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
-    dnf install -y docker
-    systemctl enable --now docker
+    dnf install -y docker && systemctl enable --now docker
+    docker run -d --restart=always -p 80:8080 \
+    --name lockbank-app ${var.app_image}
     USERDATA
   )
 
@@ -128,7 +155,7 @@ resource "aws_autoscaling_group" "blue" {
   min_size                  = var.asg_min
   max_size                  = var.asg_max
   desired_capacity          = var.asg_desired
-  vpc_zone_identifier       = aws_subnet.app[*].id
+  vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.blue.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 90 # ← 이 줄 추가 (교체 인스턴스 부팅 여유, 데모용 90s)
@@ -153,7 +180,7 @@ resource "aws_autoscaling_group" "green" {
   min_size                  = 0
   max_size                  = var.asg_max
   desired_capacity          = 0
-  vpc_zone_identifier       = aws_subnet.app[*].id
+  vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.green.arn]
   health_check_type         = "ELB"
   health_check_grace_period = 90 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
@@ -175,9 +202,9 @@ resource "aws_autoscaling_group" "green" {
 resource "aws_instance" "db" {
   ami                    = data.aws_ssm_parameter.al2023.value
   instance_type          = var.db_instance_type
-  subnet_id              = aws_subnet.db[0].id
-  vpc_security_group_ids = [aws_security_group.db.id]
-  key_name               = var.key_name
+  subnet_id              = aws_subnet.db_subnet[0].id
+  vpc_security_group_ids = [aws_security_group.db_sg.id]
+  key_name               = aws_key_pair.kp.key_name
   iam_instance_profile   = aws_iam_instance_profile.db.name
 
   user_data = <<-EOF

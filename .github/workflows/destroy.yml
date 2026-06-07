@@ -1,4 +1,4 @@
-# .github/workflows/destroy.yml
+# ~/project2-security/.github/workflows/destroy.yml
 
 
 name: "Terraform Destroy"
