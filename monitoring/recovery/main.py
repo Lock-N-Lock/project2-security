@@ -1,7 +1,8 @@
 import time
 import json
+import threading
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import FastAPI, BackgroundTasks
 
 from actions.runner import run_command
 from policy.loader import get_policy
@@ -36,6 +37,55 @@ app = FastAPI()
 
 active_recoveries = set()
 last_recovery_at = load_state()
+state_lock = threading.Lock()
+
+
+def update_and_save_state(lock_key, timestamp):
+    with state_lock:
+        last_recovery_at[lock_key] = timestamp
+        save_state(last_recovery_at)
+
+
+def run_recovery_task(lock_key, alertname, target, command, verify):
+    try:
+        action_success = run_command(command)
+
+        if not action_success:
+            write_critical_log(f"action failed: {alertname}")
+            update_and_save_state(lock_key, time.time())
+            return
+
+        write_recovery_log(f"action success: {alertname}")
+        time.sleep(2)
+
+        if verify.get("type") == "http":
+            verify_url = verify.get("url")
+            verify_timeout = verify.get("timeout", 5)
+
+            verify_success = verify_http(
+                verify_url,
+                timeout=verify_timeout
+            )
+
+            if verify_success:
+                write_recovery_log(f"verify success: {alertname}")
+                update_and_save_state(lock_key, time.time())
+                return
+
+            write_critical_log(f"verify failed: {alertname}")
+            update_and_save_state(lock_key, time.time())
+            return
+
+        write_recovery_log(f"verify skipped: {alertname}")
+        update_and_save_state(lock_key, time.time())
+
+    except Exception as e:
+        write_critical_log(f"recovery task exception: {alertname}, error={e}")
+        update_and_save_state(lock_key, time.time())
+
+    finally:
+        with state_lock:
+            active_recoveries.discard(lock_key)
 
 
 @app.get("/")
@@ -44,7 +94,7 @@ def root():
 
 
 @app.post("/webhook")
-def webhook(payload: dict):
+def webhook(payload: dict, background_tasks: BackgroundTasks):
     alertname = (
         payload.get("alertname")
         or payload.get("commonLabels", {}).get("alertname")
@@ -86,96 +136,47 @@ def webhook(payload: dict):
     target = policy.get("target", "unknown")
     lock_key = f"{alertname}:{target}"
     cooldown = int(policy.get("cooldown", 0))
+    verify = policy.get("verify", {})
     now = time.time()
 
-    if lock_key in active_recoveries:
-        write_recovery_log(f"locked: recovery already running: {lock_key}")
-        return {
-            "status": "locked",
-            "alertname": alertname,
-            "target": target,
-            "message": "recovery already running"
-        }
-
-    last_run = last_recovery_at.get(lock_key)
-
-    if last_run and cooldown > 0 and now - last_run < cooldown:
-        remaining = round(cooldown - (now - last_run), 2)
-        write_recovery_log(
-            f"cooldown: recovery skipped: {lock_key}, remaining={remaining}s"
-        )
-        return {
-            "status": "cooldown",
-            "alertname": alertname,
-            "target": target,
-            "remaining": remaining
-        }
-
-    active_recoveries.add(lock_key)
-
-    try:
-        action_success = run_command(command)
-
-        if not action_success:
-            write_critical_log(f"action failed: {alertname}")
-            last_recovery_at[lock_key] = time.time()
-            save_state(last_recovery_at)
+    with state_lock:
+        if lock_key in active_recoveries:
+            write_recovery_log(f"locked: recovery already running: {lock_key}")
             return {
-                "status": "failed",
+                "status": "locked",
                 "alertname": alertname,
                 "target": target,
-                "stage": "action",
-                "command": command
+                "message": "recovery already running"
             }
 
-        write_recovery_log(f"action success: {alertname}")
-        time.sleep(2)
+        last_run = last_recovery_at.get(lock_key)
 
-        verify = policy.get("verify", {})
-
-        if verify.get("type") == "http":
-            verify_url = verify.get("url")
-            verify_timeout = verify.get("timeout", 5)
-
-            verify_success = verify_http(
-                verify_url,
-                timeout=verify_timeout
+        if last_run and cooldown > 0 and now - last_run < cooldown:
+            remaining = round(cooldown - (now - last_run), 2)
+            write_recovery_log(
+                f"cooldown: recovery skipped: {lock_key}, remaining={remaining}s"
             )
-
-            if verify_success:
-                write_recovery_log(f"verify success: {alertname}")
-                last_recovery_at[lock_key] = time.time()
-                save_state(last_recovery_at)
-                return {
-                    "status": "success",
-                    "alertname": alertname,
-                    "target": target,
-                    "command": command,
-                    "verify": "success"
-                }
-
-            write_critical_log(f"verify failed: {alertname}")
-            last_recovery_at[lock_key] = time.time()
-            save_state(last_recovery_at)
             return {
-                "status": "failed",
+                "status": "cooldown",
                 "alertname": alertname,
                 "target": target,
-                "stage": "verify",
-                "command": command,
-                "verify": "failed"
+                "remaining": remaining
             }
 
-        write_recovery_log(f"verify skipped: {alertname}")
-        last_recovery_at[lock_key] = time.time()
-        save_state(last_recovery_at)
-        return {
-            "status": "success",
-            "alertname": alertname,
-            "target": target,
-            "command": command,
-            "verify": "skipped"
-        }
+        active_recoveries.add(lock_key)
 
-    finally:
-        active_recoveries.discard(lock_key)
+    background_tasks.add_task(
+        run_recovery_task,
+        lock_key,
+        alertname,
+        target,
+        command,
+        verify
+    )
+
+    return {
+        "status": "started",
+        "alertname": alertname,
+        "target": target,
+        "message": "recovery task started in background"
+    }
