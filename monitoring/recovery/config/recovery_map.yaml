@@ -1,0 +1,239 @@
+# ==================================================
+# Recovery Policy Configuration
+# ==================================================
+#
+# mode
+#
+# auto_recovery
+#   - Recovery Controller가 자동 복구 수행
+#   - Verify 성공 시 복구 성공 로그 기록
+#
+# notify_only
+#   - 자동 복구 수행 안 함
+#   - 알림 및 Event History 기록만 수행
+#
+# category
+#
+# user_service
+#   - 사용자 서비스 장애
+#   - 알림 O / 자동복구 O / recovery.log
+#
+# maintenance
+#   - 운영 컴포넌트 장애
+#   - 알림 X / 자동복구 O / maintenance.log
+#
+# security
+#   - 보안 이벤트
+#   - 알림 O / 자동복구 X / event.log
+#
+# 참고
+#   - PostgresDown 정책은 추후 결정
+#   - Notify Only / Replica Promote 검토 중
+#   - RecoveryControllerDown은 자기 자신을 복구할 수 없으므로 별도 보호 방식 검토
+#
+# ==================================================
+
+
+# --------------------------------------------------
+# User Service Recovery
+# --------------------------------------------------
+
+# App 서비스 장애
+# 실제 Health Check URL은 B Track 완료 후 확정
+BankAppDown:
+  description: "LockBank application container is down"
+
+  category: user_service
+  notify: true
+  log: recovery.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lockbank-app
+
+  command: "bash ./actions/docker_restart.sh lockbank-app"
+
+  verify:
+    type: http
+    url: "TODO_APP_HEALTH_URL"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
+
+
+# --------------------------------------------------
+# Maintenance Recovery
+# --------------------------------------------------
+
+# 운영 컴포넌트
+# Prometheus 장애 시 자동 복구
+PrometheusDown:
+  description: "Prometheus service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-prometheus
+
+  command: "bash ./actions/docker_restart.sh lb-prometheus"
+
+  verify:
+    type: http
+    url: "http://prometheus:9090/-/ready"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
+
+
+# 운영 컴포넌트
+# Grafana 장애 시 자동 복구
+GrafanaDown:
+  description: "Grafana service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-grafana
+
+  command: "bash ./actions/docker_restart.sh lb-grafana"
+
+  verify:
+    type: http
+    url: "http://grafana:3000/api/health"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
+
+
+# 운영 컴포넌트
+# Alertmanager 장애 시 자동 복구
+AlertmanagerDown:
+  description: "Alertmanager service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-alertmanager
+
+  command: "bash ./actions/docker_restart.sh lb-alertmanager"
+
+  verify:
+    type: http
+    url: "http://alertmanager:9093/-/ready"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
+
+NginxExporterDown:
+  description: "Nginx Exporter service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-nginx-exporter
+
+  command: "bash ./actions/docker_restart.sh lb-nginx-exporter"
+
+  verify:
+    type: http
+    url: "http://nginx-exporter:9113/metrics"
+    timeout: 5
+
+  retry: 3
+  cooldown: 10
+
+
+# --------------------------------------------------
+# Security Events
+# --------------------------------------------------
+
+# 로그인 실패 급증
+# 운영자 확인 대상
+HighLoginFailureRate:
+  description: "High login failure rate detected"
+
+  category: security
+  notify: true
+  log: event.log
+
+  mode: notify_only
+
+
+# Rate Limit 발생
+# 운영자 확인 대상
+RateLimitTriggered:
+  description: "Rate limit triggered"
+
+  category: security
+  notify: true
+  log: event.log
+
+  mode: notify_only
+
+
+# --------------------------------------------------
+# Pending Decisions
+# --------------------------------------------------
+#
+# B Track 확인 필요
+# - App container name
+# - App health endpoint
+# - Prometheus job_name
+# - Login failure metric name
+# - Rate limit metric name
+#
+# D Track 확인 필요
+# - maintenance.log 분리 적용 방식
+# - notify 필드 실제 분기 적용 방식
+# - Recovery Lock 구현 방식
+#
+# 보류
+# - PostgresDown 정책
+#   - Notify Only
+#   - Replica Promote
+#   - Failover
+# - RecoveryControllerDown 보호 방식
+#   - Docker restart policy
+#   - systemd
+#   - 외부 감시
+
+
+# PostgresDown:
+#   description: "PostgreSQL service is down"
+#
+#   category: database
+#   notify: true
+#   log: critical.log
+#
+#   mode: notify_only
+#
+# NOTE:
+# - DB 구성 여부 미확인
+# - DB exporter / pg_isready 방식 미확정
+# - 자동복구는 Replica Promote / Failover 검토 후 결정
