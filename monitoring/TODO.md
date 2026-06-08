@@ -11,15 +11,15 @@
   - 출처: PR #10 Review
   - 답변: "추후 리팩토링 단계에서 검토"
 
-- [ ] recovery_map.yaml 캐싱 적용 검토
+- [x] recovery_map.yaml 캐싱 적용 검토
   - 출처: PR #10 Review
   - 답변: "캐싱 개선은 Hardening 단계에서 검토"
 
-- [ ] recovery_map.yaml 로딩 예외 처리 개선
+- [x] recovery_map.yaml 로딩 예외 처리 개선
   - 출처: PR #10 Review
   - 답변: "예외 처리 개선은 Hardening 단계에서 검토"
 
-- [ ] 표준 Python logging 적용 검토
+- [x] 표준 Python logging 적용 검토
   - 출처: PR #10 Review
   - 답변: "표준 logging + RotatingFileHandler 교체 검토"
 
@@ -27,7 +27,7 @@
   - 출처: PR #14 Gemini Review
   - 답변: "docker-socket-proxy 또는 권한 제한 구조 검토"
 
-- [ ] Recovery Action 비동기 처리 검토
+- [x] Recovery Action 비동기 처리 검토
   - 출처: PR #19 Gemini Review
   - 목적: Alertmanager Webhook Timeout 방지
   - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
@@ -78,10 +78,18 @@
   - 후보: notify_only / Replica Promote / Failover
   - #19 범위에서는 주석 보류
 
-- [ ] CloudWatch Alarm Grafana 반영 방식 확정
-  - 대상: ALB5xxHigh, TargetGroupUnhealthy, TargetGroupUnhealthyGreen, ASGScaleOut
-  - 현재 상태: Terraform cloudwatch.tf에 Alarm 정의 존재
-  - 방향: Grafana CloudWatch datasource / Alert History 연계
+- [ ] CloudWatch Alarm Dashboard 반영 범위 확정
+
+  대상:
+  - ALB5xxHigh
+  - TargetGroupUnhealthy
+  - TargetGroupUnhealthyGreen
+  - ASGScaleOut
+
+  논의사항:
+  - Dashboard 패널로 표시할지
+  - Alert History 형태로 표시할지
+  - MVP 범위에서 제외할지
 
 ## Dashboard / History
 
@@ -89,9 +97,25 @@
   - Loki / Promtail로 Recovery Controller 로그 수집 확인
   - Grafana Explore에서 `{job="recovery-logs"}` 조회 가능
 
-- [ ] Dashboard Panel 구성
+- [x] Dashboard Panel 구성
   - Security
   - Application
   - Infrastructure
   - Recovery
+
+- [x] Dashboard Provisioning 구성 및 검증
+  - Dashboard JSON Repository 관리
+  - Grafana 자동 로드 확인
+  - Provisioned Dashboard 검증 완료
   - Event Timeline / Alert History
+
+- [ ] Recovery Metrics 구성
+  - 대상:
+    - recovery_attempt_total
+    - recovery_success_total
+    - recovery_failed_total
+  - 필요 작업:
+    - Recovery Controller 메트릭 노출
+    - Prometheus Scrape 설정
+    - Grafana Recovery 패널 연동 검증
+
