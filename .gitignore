@@ -34,6 +34,7 @@ secrets.*
 .docker_config
 .aws/
 monitoring/.env
+!monitoring/.env.example
 
 # ============ Python ============
 __pycache__/
