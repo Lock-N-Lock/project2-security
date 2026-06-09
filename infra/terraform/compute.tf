@@ -145,9 +145,30 @@ resource "aws_launch_template" "app" {
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
+    set -uxo pipefail
+
+    # 1) Tailscale 노드 가입 (해결책 2: node-to-node, accept-routes=false)
+    curl -fsSL https://tailscale.com/install.sh | sh
+    systemctl enable --now tailscaled
+    TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
+      -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
+    IID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+      http://169.254.169.254/latest/meta-data/instance-id)
+    HN="${var.project}-app-$IID"
+    tailscale up \
+      --authkey=${tailscale_tailnet_key.app_join.key} \
+      --accept-routes=false \
+      --hostname="$HN" \
+      --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
+
+    # 2) 앱 컨테이너 (기존 그대로)
     dnf install -y docker && systemctl enable --now docker
     docker run -d --restart=always -p 80:8080 \
-    --name lockbank-app ${var.app_image}
+      --name lockbank-app ${var.app_image}
+
+    # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    # docker run -d --restart=always --net=host --name node-exporter \
+    #   quay.io/prometheus/node-exporter
     USERDATA
   )
 

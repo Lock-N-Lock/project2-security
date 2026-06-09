@@ -33,6 +33,7 @@ secrets.*
 .dockerhub_token
 .docker_config
 .aws/
+monitoring/.env
 
 # ============ Python ============
 __pycache__/

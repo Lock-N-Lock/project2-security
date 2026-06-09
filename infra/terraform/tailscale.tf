@@ -32,3 +32,12 @@ data "tailscale_device" "db_device" {
   wait_for   = "180s"
   depends_on = [aws_instance.db]
 }
+
+# App ASG 전용 ephemeral 가입키 (스케일인 시 tailnet에서 자동 삭제)
+resource "tailscale_tailnet_key" "app_join" {
+  reusable      = true        # ASG 전 인스턴스가 한 키로 가입
+  ephemeral     = true        # ★ 오프라인(스케일인) 시 노드 자동 제거 → 찌꺼기 0
+  preauthorized = true        # 콘솔 수동 승인 없이 합류
+  tags          = ["tag:app"] # ★ 이 키로 가입한 기기엔 tag:app 자동 부여 → ACL·디스커버리 필터
+  description   = "${var.project} App ASG ephemeral join key"
+}
