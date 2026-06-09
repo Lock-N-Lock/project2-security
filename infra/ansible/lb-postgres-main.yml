@@ -79,7 +79,7 @@
         name: pg_dump_to_s3
         minute: "0"
         hour: "3"
-        job: "docker exec -e PGPASSWORD='lb-user' lb-postgres-main pg_dump -U lb-user lb-db | gzip | aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"
+        job: "/usr/bin/docker exec -e PGPASSWORD='lb-user' lb-postgres-main pg_dump -U lb-user lb-db | /usr/bin/gzip | /usr/bin/aws s3 cp - s3://{{ db_backup_bucket }}/pg_$(date +\\%F).sql.gz"
 
     - name: "설치 완료 확인 로그 출력"
       ansible.builtin.debug:

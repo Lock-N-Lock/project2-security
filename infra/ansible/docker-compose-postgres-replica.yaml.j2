@@ -39,6 +39,8 @@ services:
           PGPASSWORD=lb-user pg_basebackup -h $${PRIMARY_HOST} -U lb-user -D /var/lib/postgresql/data -Fp -Xs -P -R
           echo "Standby replica initialized!"
         fi
+        echo "Fixing directory permissions for postgres..."
+        chown -R postgres:postgres /var/lib/postgresql/data
         exec docker-entrypoint.sh postgres
     networks:
       - lb-net-replica

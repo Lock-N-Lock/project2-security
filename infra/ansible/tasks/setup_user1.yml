@@ -12,6 +12,7 @@
     dest: "/etc/sudoers.d/user1"
     content: "user1  ALL=(ALL)  NOPASSWD: ALL"
     mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
 
 - name: "0.3단계: 제어 노드의 공개키를 user1의 authorized_keys에 주입"
   ansible.builtin.authorized_key:

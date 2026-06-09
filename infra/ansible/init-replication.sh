@@ -1,5 +1,5 @@
 #!/bin/bash
 set -e
 
-# Allow replication connections from anywhere (trust for testing)
-echo "host replication all 0.0.0.0/0 trust" >> "$PGDATA/pg_hba.conf"
+# Allow replication connections with password auth
+echo "host replication lb-user 0.0.0.0/0 scram-sha-256" >> "$PGDATA/pg_hba.conf"

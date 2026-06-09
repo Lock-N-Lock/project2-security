@@ -8,6 +8,28 @@
   gather_facts: true  # 대상 서버 정보 수집
 
   tasks:
+    - name: "Tailscale 설치 (스크립트 활용)"
+      ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+      args:
+        creates: /usr/bin/tailscale
+
+    - name: "Tailscale 서비스 시작 및 활성화"
+      ansible.builtin.systemd:
+        name: tailscaled
+        state: started
+        enabled: yes
+
+    - name: "Tailscale 상태 확인 (이미 연결되어 있는지)"
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      ignore_errors: true
+      changed_when: false
+
+    - name: "Tailscale Tailnet 연결 (authkey 사용)"
+      ansible.builtin.command:
+        cmd: tailscale up --authkey={{ tailscale_authkey }} --accept-routes=false --hostname=lb-postgres-replica
+      when: tailscale_authkey is defined and tailscale_status.rc != 0
+
     - name: "도커 및 Compose 엔진 공통 셋업"
       ansible.builtin.include_tasks: tasks/setup_docker.yml
 
