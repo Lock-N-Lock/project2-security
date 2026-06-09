@@ -129,7 +129,7 @@ variable "domain_name" {
 variable "route53_zone_name" {
   description = "dns_provider=route53 일 때 기존 Route53 호스팅 영역"
   type        = string
-  default     = ""
+  default     = "gmfrd.store"
 }
 
 # cloudflare 전용 — Zone ID + API 토큰 (토큰은 환경변수 권장)
@@ -142,7 +142,7 @@ variable "cloudflare_zone_id" {
 variable "cloudflare_api_token" {
   description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
   type        = string
-  default     = ""
+  default     = "dummy_token_placeholder_exactly_40_chars"
   sensitive   = true
 }
 

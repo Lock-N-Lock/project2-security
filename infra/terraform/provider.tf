@@ -29,6 +29,7 @@ terraform {
       version = "~> 0.16"
     }
   }
+
   # terraform 상태 관리를 위한 remote backend 설정
   backend "s3" {
     # bucketd은 외부 파일(terraform/hcl/backend.hcl)에서 채우기

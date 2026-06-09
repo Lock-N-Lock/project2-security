@@ -57,3 +57,4 @@ monitoring/recovery/logs/recovery_state.tmp
 
 # Terraform remote backend config (local)
 infra/terraform/backend.hcl
+*.retry

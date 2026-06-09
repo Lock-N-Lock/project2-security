@@ -40,6 +40,7 @@ resource "aws_instance" "nat" {
   user_data = <<-EOF
     #!/bin/bash
     set -eux
+    dnf install -y iptables
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl -p /etc/sysctl.d/99-nat.conf
 
@@ -47,6 +48,7 @@ resource "aws_instance" "nat" {
     iptables -P FORWARD ACCEPT
     iptables -I FORWARD -j ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
+    iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
     cat <<'SYSTEMD' > /etc/systemd/system/nat.service
     [Unit]
@@ -59,6 +61,7 @@ resource "aws_instance" "nat" {
     ExecStart=/sbin/iptables -P FORWARD ACCEPT
     ExecStart=/sbin/iptables -I FORWARD -j ACCEPT
     ExecStart=/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
+    ExecStart=/sbin/iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
     
     [Install]
     WantedBy=multi-user.target
@@ -102,7 +105,6 @@ resource "aws_instance" "bastion" {
     #!/bin/bash
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
-    
     # 1. 호스트네임 및 시스템 기본 설정
     hostnamectl set-hostname "${var.project}-bastion"
     
@@ -222,6 +224,7 @@ resource "aws_instance" "db" {
   user_data = <<-EOF
     #!/bin/bash
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
+    # 1. 호스트네임 및 시스템 기본 설정
     hostnamectl set-hostname "${var.project}-db"
     until ping -c 1 8.8.8.8 &> /dev/null; do sleep 5; done
     curl -fsSL https://tailscale.com/install.sh | sh
