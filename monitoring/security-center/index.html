@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>LockBank Security Center</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+            color: #111827;
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 260px;
+            background: #ffffff;
+            border-right: 1px solid #e5e7eb;
+            padding: 28px 20px;
+            box-shadow: 2px 0 14px rgba(0, 0, 0, 0.04);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .brand {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1d4ed8;
+            margin-bottom: 8px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .brand-subtitle {
+            font-size: 13px;
+            color: #6b7280;
+            margin-bottom: 34px;
+        }
+
+        .menu {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .menu button {
+            border: 0;
+            background: transparent;
+            color: #374151;
+            text-align: left;
+            padding: 14px 16px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .menu button:hover,
+        .menu button.active {
+            background: #eaf1ff;
+            color: #1d4ed8;
+        }
+
+        .content {
+            flex: 1;
+            padding: 34px;
+            box-sizing: border-box;
+        }
+
+        .topbar {
+            background: white;
+            border-radius: 20px;
+            padding: 26px 30px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            margin-bottom: 28px;
+        }
+
+        .topbar h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            color: #111827;
+        }
+
+        .topbar p {
+            margin: 0;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin: 0 0 16px;
+        }
+
+        .section-desc {
+            color: #6b7280;
+            margin-bottom: 22px;
+            line-height: 1.6;
+        }
+
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+        }
+
+        .card-title {
+            color: #374151;
+            font-weight: 800;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        iframe {
+            width: 100%;
+            height: 230px;
+            border: 0;
+            border-radius: 12px;
+            background: white;
+        }
+
+        .wide {
+            grid-column: 1 / -1;
+        }
+
+        .wide iframe {
+            height: 430px;
+        }
+
+        .side-info {
+        margin-top: 34px;
+        padding: 18px;
+        border-radius: 16px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        }
+
+        .side-info-title {
+        font-size: 12px;
+        font-weight: 800;
+        color: #6b7280;
+        margin: 12px 0 8px;
+        text-transform: uppercase;
+        }
+
+        .side-info-title:first-child {
+        margin-top: 0;
+        }
+
+        .side-info-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #111827;
+        margin-bottom: 12px;
+        }
+
+        .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: #22c55e;
+        display: inline-block;
+        }
+
+        .side-tag {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 700;
+        color: #1d4ed8;
+        background: #eaf1ff;
+        padding: 6px 9px;
+        border-radius: 999px;
+        margin: 4px 4px 0 0;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: static;
+                border-right: 0;
+                border-bottom: 1px solid #e5e7eb;
+            }
+
+            .menu {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .content {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .menu {
+                grid-template-columns: 1fr;
+            }
+
+            .card-grid {
+                grid-template-columns: 1fr;
+            }
+
+            iframe {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-shield-halved"></i>
+                LockBank
+            </div>
+            <div class="brand-subtitle">
+                Security Center<br>
+                Monitoring Console
+            </div>
+
+            <nav class="menu">
+                <button class="active" onclick="showSection('overview', this)">
+                    <i class="fa-solid fa-house"></i> Overview
+                </button>
+                <button onclick="showSection('security', this)">
+                    <i class="fa-solid fa-user-shield"></i> Security Events
+                </button>
+                <button onclick="showSection('recovery', this)">
+                    <i class="fa-solid fa-rotate"></i> Recovery
+                </button>
+                <button onclick="showSection('timeline', this)">
+                    <i class="fa-solid fa-timeline"></i> Event Timeline
+                </button>
+            </nav>
+                <div class="side-info">
+                    <div class="side-info-title">Environment</div>
+                <div class="side-info-row">
+                    <span class="status-dot"></span>
+                    <span>Monitoring Mode</span>
+                </div>
+
+                <div class="side-info-title">Stack</div>
+                <div class="side-tag">Prometheus</div>
+                <div class="side-tag">Grafana</div>
+                <div class="side-tag">Loki</div>
+                <div class="side-tag">Recovery Controller</div>
+            </div>
+        </aside>
+
+        <main class="content">
+            <div class="topbar">
+                <h1>LockBank Security Center</h1>
+                <p>
+                    서비스 상태, 보안 이벤트, 자동 복구 현황, 이벤트 타임라인을 시연 흐름에 맞춰 확인하는 운영 관제 화면입니다.
+                </p>
+            </div>
+
+            <section id="overview" class="section active">
+                <div class="section-title">Overview</div>
+                <div class="section-desc">
+                    정상 운영 상태와 현재 Alert, 당일 복구 현황을 확인합니다.
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-server"></i> App Status</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=1"></iframe>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-bell"></i> Active Alerts</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=16"></iframe>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-rotate"></i> Recovery Today</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=17"></iframe>
+                    </div>
+                </div>
+            </section>
+
+            <section id="security" class="section">
+                <div class="section-title">Security Events</div>
+                <div class="section-desc">
+                    로그인 공격, API Flooding, Rate Limit, IP 차단 이벤트를 확인합니다.
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-user-lock"></i> Login Failure Count</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=3"></iframe>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-gauge-high"></i> HTTP 429 Count</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=32"></iframe>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-shield"></i> Blocked IP Count</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=20"></iframe>
+                    </div>
+                </div>
+            </section>
+
+            <section id="recovery" class="section">
+                <div class="section-title">Recovery</div>
+                <div class="section-desc">
+                    컨테이너 장애 발생 후 자동 복구 시도와 복구 성공률을 확인합니다.
+                </div>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-play"></i> Recovery Attempt Count</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=6"></iframe>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title"><i class="fa-solid fa-circle-check"></i> Recovery Success Rate</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=26"></iframe>
+                    </div>
+                </div>
+            </section>
+
+            <section id="timeline" class="section">
+                <div class="section-title">Event Timeline</div>
+                <div class="section-desc">
+                    Alert, Recovery, Verify, Critical Log 흐름을 시간순으로 확인합니다.
+                </div>
+
+                <div class="card-grid">
+                    <div class="card wide">
+                        <div class="card-title"><i class="fa-solid fa-timeline"></i> Unified Event Timeline</div>
+                        <iframe
+                            src="http://172.16.1.150:3000/d-solo/dfodmd3s8ecqoc/lockbank-security-and-operations-dashboard?orgId=1&from=now-24h&to=now&panelId=2"></iframe>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        function showSection(sectionId, button) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.remove('active');
+            });
+
+            document.getElementById(sectionId).classList.add('active');
+
+            document.querySelectorAll('.menu button').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            button.classList.add('active');
+        }
+    </script>
+</body>
+~
+</html>

@@ -2,7 +2,8 @@ import time
 import json
 import threading
 from pathlib import Path
-from fastapi import FastAPI, BackgroundTasks
+from fastapi import FastAPI, BackgroundTasks, Response
+from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
 
 from actions.runner import run_command
 from policy.loader import get_policy
@@ -35,6 +36,18 @@ def save_state(state):
 
 app = FastAPI()
 
+recovery_attempt_total = Counter(
+    "recovery_attempt_total",
+    "Total number of recovery attempts",
+    ["alertname", "target"]
+)
+
+recovery_success_total = Counter(
+    "recovery_success_total",
+    "Total number of successful recoveries",
+    ["alertname", "target"]
+)
+
 active_recoveries = set()
 last_recovery_at = load_state()
 state_lock = threading.Lock()
@@ -47,6 +60,10 @@ def update_and_save_state(lock_key, timestamp):
 
 
 def run_recovery_task(lock_key, alertname, target, command, verify):
+    recovery_attempt_total.labels(
+        alertname=alertname,
+        target=target
+    ).inc()
     try:
         action_success = run_command(command)
 
@@ -68,6 +85,10 @@ def run_recovery_task(lock_key, alertname, target, command, verify):
             )
 
             if verify_success:
+                recovery_success_total.labels(
+                    alertname=alertname,
+                    target=target
+                ).inc()
                 write_recovery_log(f"verify success: {alertname}")
                 update_and_save_state(lock_key, time.time())
                 return
@@ -92,6 +113,13 @@ def run_recovery_task(lock_key, alertname, target, command, verify):
 def root():
     return {"message": "Recovery Controller Running"}
 
+
+@app.get("/metrics")
+def metrics():
+    return Response(
+        generate_latest(),
+        media_type=CONTENT_TYPE_LATEST
+    )
 
 @app.post("/webhook")
 def webhook(payload: dict, background_tasks: BackgroundTasks):
