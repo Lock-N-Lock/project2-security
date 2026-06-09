@@ -5,8 +5,8 @@
 | 트랙 | A — 인프라·IaC |
 | 담당 | 신준한 (main) / 박정은 (sub) |
 | 디렉토리 | `infra/terraform/`, `infra/ansible/` |
-| State | **local state** (개인 AWS 계정 독립 실행 — S3 backend 미사용) |
-| 최종 수정 | 2026-06-04 |
+| State | S3 backend (개인 버킷 + DynamoDB lock) |
+| 최종 수정 | 2026-06-07 |
 
 ---
 
@@ -38,7 +38,27 @@ AWS 위에 프로젝트의 네트워크·컴퓨트·보안·관측 토대를 Ter
   NAT instance     : private 서브넷 아웃바운드 중계 (NAT GW 대체, 비용절감)
   온프레 proj-mgmt  : Tailscale 100.x 직결 → DB 복제 / 모니터링 scrape
 ```
+---
 
+## 1.5 배포 순서 (Quick Start)
+
+> State: **개인별 S3 backend + DynamoDB lock** (init/로 부트스트랩)
+
+```bash
+# ① (최초 1회) backend 리소스 생성
+cd infra/terraform/init && terraform init && terraform apply
+terraform output s3_bucket_name                      # 본인 버킷명
+
+# ② backend.hcl (개인 버킷명, gitignore)
+cd .. && cp hcl/backend.hcl.example hcl/backend.hcl  # bucket 값 입력
+
+# ③ 인프라 + App
+make init        # -backend-config=hcl/backend.hcl 자동
+make apply       # 인프라 + App 컨테이너 user_data 기동
+
+# ④ DB 컨테이너 (proj-mgmt 로컬)
+make deploy-db   # postgres + S3 백업 cron
+```
 ---
 
 ## 2. 사전 준비 (apply 전 필수)
@@ -46,7 +66,7 @@ AWS 위에 프로젝트의 네트워크·컴퓨트·보안·관측 토대를 Ter
 | # | 항목 | 방법 |
 |---|------|------|
 | 1 | AWS 자격증명 | `aws configure` (개인 계정, region `ap-northeast-2`) |
-| 2 | EC2 키페어 `lb-key` | AWS 콘솔/CLI로 **미리 생성** (`var.key_name` 이 참조) |
+| 2 | EC2 키페어 `lb-key` | 키페어 자동 생성(tls/local) — 수동 불필요 |
 | 3 | `terraform.tfvars` | `terraform.tfvars.example` 복사 후 값 채우기 (아래 4) |
 | 4 | Cloudflare 토큰 (cloudflare 사용 시) | `export TF_VAR_cloudflare_api_token="cf_xxx"` (tfvars 금지) |
 | 5 | Tailscale provider 키 | `export TF_VAR_tailscale_api_key="tskey-api-xxx"` + tfvars `tailnet_name` |
@@ -80,10 +100,10 @@ infra/terraform/
 
 | 파일 | 핵심 리소스 | 설명 |
 |------|------------|------|
-| `provider.tf` | `terraform{}`, `provider aws/cloudflare/tailscale` | required_version ≥1.5, aws ~>5.0. backend는 주석(=local state). `default_tags`로 전 리소스에 Project/ManagedBy/Track 태깅 |
+| `provider.tf` | `terraform{}`, `provider aws/cloudflare/tailscale` | required_version ≥1.5, aws ~>5.0. S3 backend (backend.hcl 주입). `default_tags`로 전 리소스에 Project/ManagedBy/Track 태깅 |
 | `variables.tf` | 변수 30여 개 | 네트워크 CIDR·인스턴스 타입·ASG·DNS 토글·시크릿(sensitive)·exporter 포트. `dns_provider`/`admin_ingress_cidr` 검증 포함 |
-| `network.tf` | `aws_vpc`, `aws_internet_gateway`, `aws_subnet`(public/app/db, count), `aws_route_table`(public/private_app/private_db) | VPC 10.0.0.0/16. public=IGW, app=NAT(라우트는 compute.tf), **db=인터넷 직결 없음(격리)** |
-| `security_groups.tf` | `aws_security_group` alb/bastion/app/db/nat + `aws_security_group_rule` app_exporters | ALB→App(80)→DB(5432) 단방향. Bastion=SSH 관문. ⚠️ exporter/pg 룰은 overlay CIDR 기준이나 **Tailscale 트래픽엔 미적용**(아래 6 참조) |
+| `network.tf` | `aws_vpc`, `aws_internet_gateway`, `aws_subnet`(public/app/db, count), `aws_route_table`(public/private_app/private_db) | VPC 10.0.0.0/16. public=IGW, app=NAT(라우트는 compute.tf), **db=egress-only(NAT 경유)** |
+| `security_groups.tf` | `aws_security_group` alb/bastion/app/db/nat + `aws_security_group_rule` app_exporters | ALB→App(80)→DB(5432) 단방향. Bastion=SSH 관문. ⚠️ exporter/pg 룰은 제거됨(Tailscale로 대체) |
 | `alb.tf` | `aws_lb`, `aws_lb_target_group` blue/green, `aws_lb_listener` http_redirect/http_forward/https | TG 포트 80, 헬스 `/health` 200. https 모드: 80→443 리다이렉트 + 443 forward. 443 리스너는 `ignore_changes=[default_action]`(배포 전환 보존) |
 | `compute.tf` | `data ssm al2023`, `aws_instance` nat/bastion/db, `aws_route` app_nat/**db_nat**, `aws_launch_template` app, `aws_autoscaling_group` blue/green | AMI=AL2023(SSM 최신). NAT=iptables MASQUERADE. Bastion=Tailscale 서브넷라우터. DB=Tailscale 노드+gp3 암호화. **db_nat = DB egress-only 경로** |
 | `iam.tf` | `aws_iam_role` db(+S3 정책·instance_profile), `aws_iam_user` grafana_cw(+CloudWatch read·access_key) | DB EC2가 S3에 pg_dump 업로드. Grafana(온프레)용 CloudWatch 읽기 키 발급 |

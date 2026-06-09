@@ -34,7 +34,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  dimensions          = { LoadBalancer = aws_lb.main.arn_suffix }
+  dimensions          = { LoadBalancer = aws_lb.web_alb.arn_suffix }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
@@ -50,7 +50,7 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
-    LoadBalancer = aws_lb.main.arn_suffix
+    LoadBalancer = aws_lb.web_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.blue.arn_suffix
   }
   alarm_actions      = [aws_sns_topic.alerts.arn]
@@ -67,7 +67,7 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy_green" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
-    LoadBalancer = aws_lb.main.arn_suffix
+    LoadBalancer = aws_lb.web_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.green.arn_suffix
   }
   alarm_actions      = [aws_sns_topic.alerts.arn]

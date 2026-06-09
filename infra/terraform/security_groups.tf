@@ -1,12 +1,12 @@
 # ================================================================
 # security_groups.tf — 계층별 SG (최소 권한 원칙)
 # ALB → App → DB 단방향, Bastion=SSH 관문, NAT=App 아웃바운드
-# exporter(D 트랙 scrape) — 앱은 compose(단일 호스트), Swarm 미사용
+# 앱은 compose(단일 호스트), Swarm 미사용
 # 파일위치 : ~/project2-security/infra/terraform/security_groups.tf
 # ================================================================
 
 # ── ALB SG : 인터넷 → 80/443 ──────────────────────────────
-resource "aws_security_group" "alb" {
+resource "aws_security_group" "alb_sg" {
   name        = "${var.project}-alb-sg"
   description = "ALB ingress 80/443 from internet"
   vpc_id      = aws_vpc.main.id
@@ -37,13 +37,13 @@ resource "aws_security_group" "alb" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project}-alb-sg" }
+  tags = { Name = "${var.project}-alb-sg" } # lb-alb-sg
 }
 
 # ── Bastion SG : 관리자 IP → SSH ──────────────────────────
-resource "aws_security_group" "bastion" {
+resource "aws_security_group" "bastion_sg" {
   name        = "${var.project}-bastion-sg"
-  description = "Bastion SSH from admin, Tailscale subnet router"
+  description = "Bastion SSH from admin"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -62,13 +62,13 @@ resource "aws_security_group" "bastion" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project}-bastion-sg" }
+  tags = { Name = "${var.project}-bastion-sg" } # lb-bastion-sg
 }
 
-# ── App SG : ALB → 80/8000, Bastion → SSH, Swarm/exporter ──
-resource "aws_security_group" "app" {
+# ── App SG : ALB → 80, Bastion → SSH ──
+resource "aws_security_group" "app_sg" {
   name        = "${var.project}-app-sg"
-  description = "App tier: from ALB, Bastion, Swarm overlay, exporters"
+  description = "App tier: from ALB, Bastion"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -76,7 +76,7 @@ resource "aws_security_group" "app" {
     from_port       = 80
     to_port         = 80
     protocol        = "tcp"
-    security_groups = [aws_security_group.alb.id]
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   ingress {
@@ -84,7 +84,7 @@ resource "aws_security_group" "app" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
+    security_groups = [aws_security_group.bastion_sg.id]
   }
 
   egress {
@@ -94,24 +94,11 @@ resource "aws_security_group" "app" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project}-app-sg" }
+  tags = { Name = "${var.project}-app-sg" } # lb-app-sg
 }
 
-# exporter scrape : 온프레 Prometheus 가 VXLAN overlay(10.10.10.0/24) 로 접근
-resource "aws_security_group_rule" "app_exporters" {
-  for_each = toset([for p in var.exporter_ports : tostring(p)])
-
-  type              = "ingress"
-  from_port         = tonumber(each.value)
-  to_port           = tonumber(each.value)
-  protocol          = "tcp"
-  security_group_id = aws_security_group.app.id
-  cidr_blocks       = [var.onprem_overlay_cidr]
-  description       = "Prometheus scrape ${each.value} from overlay"
-}
-
-# ── DB SG : App → 5432, Bastion → SSH, pg_exporter ─────────
-resource "aws_security_group" "db" {
+# ── DB SG : App → 5432, Bastion → SSH ──
+resource "aws_security_group" "db_sg" {
   name        = "${var.project}-db-sg"
   description = "DB tier: PostgreSQL from App only"
   vpc_id      = aws_vpc.main.id
@@ -121,7 +108,7 @@ resource "aws_security_group" "db" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.app.id]
+    security_groups = [aws_security_group.app_sg.id]
   }
 
   ingress {
@@ -129,15 +116,7 @@ resource "aws_security_group" "db" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
-  }
-
-  ingress {
-    description = "postgres_exporter from overlay"
-    from_port   = 9187
-    to_port     = 9187
-    protocol    = "tcp"
-    cidr_blocks = [var.onprem_overlay_cidr]
+    security_groups = [aws_security_group.bastion_sg.id]
   }
 
   egress {
@@ -147,11 +126,11 @@ resource "aws_security_group" "db" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project}-db-sg" }
+  tags = { Name = "${var.project}-db-sg" } # lb-db-sg
 }
 
 # ── NAT instance SG : App 서브넷 → 인터넷 중계 ─────────────
-resource "aws_security_group" "nat" {
+resource "aws_security_group" "nat_sg" {
   name        = "${var.project}-nat-sg"
   description = "NAT instance: forward private subnet egress"
   vpc_id      = aws_vpc.main.id
@@ -161,7 +140,7 @@ resource "aws_security_group" "nat" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    # DB의 S3 백업 및 온프레미스 Replication 통로 개방
+    # DB의 S3 백업·패키지 업데이트 egress 통로
     cidr_blocks = concat(var.app_subnet_cidrs, var.db_subnet_cidrs)
   }
 
@@ -170,7 +149,7 @@ resource "aws_security_group" "nat" {
     from_port       = 22
     to_port         = 22
     protocol        = "tcp"
-    security_groups = [aws_security_group.bastion.id]
+    security_groups = [aws_security_group.bastion_sg.id]
   }
 
   egress {
@@ -180,5 +159,5 @@ resource "aws_security_group" "nat" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  tags = { Name = "${var.project}-nat-sg" }
+  tags = { Name = "${var.project}-nat-sg" } # lb-nat-sg
 }
