@@ -1,4 +1,4 @@
-# test01/.github/workflows/deploy.yml
+# ~/project2-security/.github/workflows/deploy.yml
 
 
 name: "Terraform Apply(수동)"

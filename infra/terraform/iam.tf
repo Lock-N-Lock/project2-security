@@ -40,10 +40,11 @@ resource "aws_iam_instance_profile" "db" {
 }
 
 # ── 2) Grafana CloudWatch 읽기 전용 사용자 (D 트랙 전달용) ──
+# 유저(외부 앱 대표)
 resource "aws_iam_user" "grafana_cw" {
   name = "${var.project}-grafana-cloudwatch"
 }
-
+# CloudWatch 읽기 전용
 resource "aws_iam_user_policy" "grafana_cw" {
   name = "${var.project}-grafana-cw-read"
   user = aws_iam_user.grafana_cw.name
@@ -63,7 +64,7 @@ resource "aws_iam_user_policy" "grafana_cw" {
     }]
   })
 }
-
+# 액세스 키(id+secret)
 resource "aws_iam_access_key" "grafana_cw" {
   user = aws_iam_user.grafana_cw.name
 }
