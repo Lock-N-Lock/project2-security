@@ -55,7 +55,8 @@ provider "aws" {
 # Cloudflare provider — dns_provider = "cloudflare" 일 때만 사용
 # 토큰은 코드에 두지 말고 환경변수 TF_VAR_cloudflare_api_token 로 주입
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  # 토큰 있으면 사용, 없으면(route53) 더미 — count=0이라 실제 호출 안 됨
+  api_token = var.cloudflare_api_token != "" ? var.cloudflare_api_token : "unused-by-route53"
 }
 
 # Tailscale provider — 키 생성·기기 승인용 (api_key 는 환경변수 권장)
