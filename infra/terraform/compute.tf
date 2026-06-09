@@ -147,12 +147,13 @@ resource "aws_launch_template" "app" {
     #!/bin/bash
     set -uxo pipefail
 
-    # 1) Tailscale 노드 가입 (해결책 2: node-to-node, accept-routes=false)
-    curl -fsSL https://tailscale.com/install.sh | sh
+    # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
+    #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
+    until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
     systemctl enable --now tailscaled
-    TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
-      -H "X-aws-ec2-metadata-token-ttl-seconds: 300")
-    IID=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
+    until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
+      -H "X-aws-ec2-metadata-token-ttl-seconds: 300"); do sleep 2; done
+    IID=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" \
       http://169.254.169.254/latest/meta-data/instance-id)
     HN="${var.project}-app-$IID"
     tailscale up \
@@ -161,7 +162,7 @@ resource "aws_launch_template" "app" {
       --hostname="$HN" \
       --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
 
-    # 2) 앱 컨테이너 (기존 그대로)
+    # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
     docker run -d --restart=always -p 80:8080 \
       --name lockbank-app ${var.app_image}
