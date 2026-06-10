@@ -124,18 +124,16 @@ services:
     networks:
       - monitoring
   
-  # ── 준한 추가 ──
-  tailscale-sd:   # Tailscale → Prometheus http_sd 헬퍼 (App 노드 디스커버리)
+  tailscale-sd:                    # Tailscale → Prometheus http_sd 헬퍼
     build: ./tailscale-sd
     environment:
       TS_API_KEY: ${TS_API_KEY}          # monitoring/.env (★gitignore)
       TS_TAILNET: ${TS_TAILNET:--}
-      EXPORTER_PORTS: "9100,9113,8080"
+      EXPORTER_PORTS: "9100,9113,8080,9187"
     restart: unless-stopped
     networks:
       - monitoring
  
-
 volumes:
   prometheus_data:
   alertmanager_data:

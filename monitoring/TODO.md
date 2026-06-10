@@ -75,7 +75,7 @@
 
 - [ ] PostgresDown Remote Adapter 연동 후 활성화
   - 현재 상태: DB Alert 구조 정리 완료
-  - 방향: PostgreSQL 프로세스/컨테이너 단위 자동복구
+  - 방향: PostgreSQL 프로세스 상태 기반 원격 복구 구조 검토
   - 제외: Replica Promote / Failover
   - 필요 작업: Remote Adapter 구현 및 통합 테스트
 
