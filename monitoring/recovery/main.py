@@ -106,6 +106,10 @@ def run_recovery_task(lock_key, alertname, target, command, verify):
             )
 
             if verify_success:
+                recovery_success_total.labels(
+                    alertname=alertname,
+                    target=target
+                ).inc()
                 write_recovery_log(f"verify success: {alertname}")
                 update_and_save_state(lock_key, time.time())
                 return
@@ -137,6 +141,7 @@ def metrics():
         generate_latest(),
         media_type=CONTENT_TYPE_LATEST
     )
+
 
 @app.post("/webhook")
 def webhook(payload: dict, background_tasks: BackgroundTasks):
