@@ -31,6 +31,8 @@ services:
           fi
         fi
         if [ ! -s /var/lib/postgresql/data/PG_VERSION ]; then
+          echo "Cleaning up data directory before backup..."
+          rm -rf /var/lib/postgresql/data/*
           echo "Waiting for primary database ($${PRIMARY_HOST})..."
           until pg_isready -h $${PRIMARY_HOST}; do
             sleep 2
