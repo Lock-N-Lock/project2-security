@@ -183,6 +183,73 @@ network (VPC·서브넷·라우팅)
 
 ---
 
+## 6.5 Tailscale 연결 구조 (node-to-node) — 팀원 안내
+
+### 한 줄 요약
+Tailscale은 **회원 전용 무전기 네트워크**입니다. 가입한 기기마다 고유 번호(`100.x`)를 받고, **회원끼리는 번호만 알면 양방향 직통**입니다(`accept-routes` 설정과 무관). 우리는 서버를 "라우터 뒤에 숨기는" 대신 **각자 회원으로 가입(node-to-node)** 시켜서 온프레(proj-mgmt) ↔ AWS를 연결합니다.
+
+### 두 가지 모델 (우리가 고른 것 = 노드)
+| | 노드 (우리 선택) | 서브넷 라우터 |
+|---|---|---|
+| 동작 | 기기가 직접 가입 → `100.x` 직통 | 한 기기가 "내 뒤 대역 다 받아"라고 광고 |
+| `accept-routes` | **false 유지 가능** (VS Code 보호) | 소비자가 **true 필요** → 대역 충돌 위험 |
+| 우리 적용 | App·DB·proj-mgmt | Bastion(휴면 break-glass) |
+
+> **왜 accept-routes=false?** proj-mgmt가 AWS 대역(또는 겹치는 172.16.x)을 라우팅 테이블에 받으면 VS Code SSH가 끊기는 충돌이 납니다. 노드 직통은 이 설정과 무관하게 동작하므로 false로 둡니다.
+
+### 기기별 역할 / 플래그 / 코드 위치
+| 기기 | 역할 | Tailscale 플래그 | 코드 위치 |
+|---|---|---|---|
+| **Bastion** | SSH 관문 + (휴면)서브넷 라우터 | `--advertise-routes=VPC --accept-routes` | `compute.tf` (bastion user_data), `tailscale.tf` `approve_vpc_routes` |
+| **DB** | 노드 (복제·Ansible 직결) | `--accept-routes=false` (광고 없음) | `compute.tf` (db user_data), `tailscale.tf` `db_device` |
+| **App (ASG)** | ephemeral 노드 (메트릭 scrape) | `--accept-routes=false`, tag:app | `compute.tf` (App LT), `tailscale.tf` `app_join` |
+| **proj-mgmt** | 노드 (모니터링·IaC 실행) | `--advertise-routes=172.16.x --accept-routes=false` | `bootstrap_tailscale.sh` |
+
+### 코드 위치별 설명
+- **`tailscale.tf`**
+  - `tailscale_tailnet_key.ec2_join` — Bastion·DB 공통 가입키(영구).
+  - `tailscale_tailnet_key.app_join` — App ASG 전용 **ephemeral + tag:app** 키(스케일인 시 노드 자동 삭제).
+  - `data.tailscale_device.bastion_device` + `tailscale_device_subnet_routes.approve_vpc_routes` — Bastion이 광고한 VPC 경로를 자동 승인(휴면 break-glass).
+  - `data.tailscale_device.db_device` — DB의 `100.x`를 조회해 outputs/inventory로 전달.
+- **`compute.tf`** — 각 인스턴스 user_data의 `tailscale up`. Bastion만 `--advertise-routes`(라우터), DB·App은 광고 없이 `--accept-routes=false`(노드).
+- **`outputs.tf`** — `db_tailscale_ip` = DB의 `100.x` (proj-mgmt replica가 이 주소:5432로 복제).
+- **`ansible.tf`** — `db_ts_ip`를 inventory의 `ansible_host`로 사용 → proj-mgmt가 DB의 `100.x`로 직접 SSH(Bastion 안 거침).
+- **`bootstrap_tailscale.sh`** (온프레) — proj-mgmt를 노드로 가입. `--accept-routes=false`(VS Code 보호).
+
+### 가상 연결도 (tailnet 100.x 메시)
+```
+        온프레                         AWS (VPC 10.0.0.0/16)
+  ┌──────────────┐                ┌───────────────────────────┐
+  │ proj-mgmt    │  100.x 직통    │  Bastion(노드+휴면라우터)   │  ← break-glass: SSH 점프
+  │ (모니터링·IaC)│◄──────────────►│                           │
+  │ accept=false │       │        │  DB(노드) 100.x:5432       │  ← 복제·Ansible
+  └──────────────┘       ├───────►│  App(ephemeral 노드)       │  ← 메트릭 scrape
+                         │        │   tag:app 100.x:9100/...   │
+                  (모두 node-to-node, 서브넷 광고 미사용)
+```
+
+### 데이터 흐름 (누가 누구에게, 100.x로)
+| 흐름 | 방향 | 비고 |
+|---|---|---|
+| 메트릭 scrape | proj-mgmt → App/DB `100.x:포트` | pull (Prometheus). SG 우회(tailscale0), 통제=ACL |
+| DB 복제 | proj-mgmt → DB `100.x:5432` | `accept-routes`와 무관 |
+| Ansible 배포 | proj-mgmt → DB `100.x:22` | inventory `ansible_host` |
+| break-glass | proj-mgmt → Bastion `100.x` → 사설 SSH | Tailscale 장애 대비 비상 경로 |
+
+> **중요:** Tailscale 트래픽은 `tailscale0`로 들어와 **AWS Security Group(ENI)을 우회**합니다. 그래서 SG 인바운드 규칙이 아니라 **Tailscale ACL + `pg_hba`**가 실제 통제점입니다.
+
+### App 동적 디스커버리 (왜 App만 추가 장치가 필요한가)
+DB는 1대 고정이라 `data.tailscale_device`로 IP를 한 번 잡으면 끝입니다. 하지만 **App은 ASG라 공격 시 인스턴스가 늘고 IP(`100.x`)가 계속 바뀝니다.** 그래서 정적 타깃 대신, `tag:app` 기기 목록을 Tailscale API로 물어 Prometheus 타깃을 갱신하는 **http_sd 헬퍼**(`monitoring/tailscale-sd/`)를 둡니다.
+
+### 검증 명령
+```bash
+tailscale status                      # 각 노드 100.x 확인 (app-*, lb-db 등)
+curl -s http://localhost:9999/app-targets | jq    # 헬퍼가 현재 App 타깃을 뱉는지
+# Prometheus UI → Status → Targets 에서 app-nodes up=1 확인
+```
+
+---
+
 ## 7. 실행·테스트 방법
 
 ```bash

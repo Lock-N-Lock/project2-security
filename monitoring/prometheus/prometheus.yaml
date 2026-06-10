@@ -35,3 +35,20 @@ scrape_configs:
     static_configs:
       - targets:
           - recovery:8000
+
+  - job_name: app-nodes
+    http_sd_configs:
+      - url: http://tailscale-sd:9999/app-targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__meta_ts_hostname]
+        target_label: ts_host        # ★ instance(ip:port) 유지, hostname은 별도 라벨
+
+  - job_name: db-node
+    http_sd_configs:
+      - url: http://tailscale-sd:9999/db-targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__meta_ts_hostname]
+        target_label: ts_host
+
