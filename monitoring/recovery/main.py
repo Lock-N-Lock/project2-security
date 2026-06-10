@@ -60,6 +60,8 @@ def update_and_save_state(lock_key, timestamp):
 
 
 def run_recovery_task(lock_key, alertname, target, command, verify):
+    verify = verify or {}
+    target = target or "unknown"
     recovery_attempt_total.labels(
         alertname=alertname,
         target=target
