@@ -121,7 +121,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - PostgreSQL exporter/job_name 확정 필요\nExpected metric: up{job=\"postgres\"} or pg_up",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - DB node/postgres-exporter scrape 검증 필요\nExpected metric: up{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -191,7 +191,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"postgres\"}",
+              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1455,7 +1455,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nPostgreSQL exporter status.\n\nExpected metric:\nup{job=\"postgres\"} or pg_up",
+          "description": "Owner: B Track\n\nData Source: Prometheus\n\nPostgreSQL exporter status.\n\nExpected metric:\nup{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1509,7 +1509,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"postgres\"}",
+              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,

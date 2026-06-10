@@ -2,6 +2,24 @@ groups:
   - name: monitoring
 
     rules:
+      # ==================================================
+      # Database Alerts
+      # DB 노드 배포 및 postgres-exporter scrape 검증 후 활성화
+      # Recovery Controller는 온프레에서 동작하므로 AWS DB 복구는 원격 실행 방식 필요
+      # Replica Promote / Failover는 자동화 범위 외
+      # ==================================================
+
+      # - alert: PostgresDown
+      #   expr: up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      #     category: database
+      #     service: postgres
+      #   annotations:
+      #     summary: PostgreSQL Down
+      #     description: PostgreSQL exporter target is down.
+
 
       # ==================================================
       # Database Alerts

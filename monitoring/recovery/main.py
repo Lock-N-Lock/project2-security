@@ -97,6 +97,23 @@ def run_recovery_task(lock_key, alertname, target, command, verify):
             update_and_save_state(lock_key, time.time())
             return
 
+        elif verify.get("type") == "command":
+            verify_command = verify.get("command")
+
+            verify_success = run_command(
+                verify_command,
+                timeout=verify.get("timeout", 5)
+            )
+
+            if verify_success:
+                write_recovery_log(f"verify success: {alertname}")
+                update_and_save_state(lock_key, time.time())
+                return
+
+            write_critical_log(f"verify failed: {alertname}")
+            update_and_save_state(lock_key, time.time())
+            return
+
         write_recovery_log(f"verify skipped: {alertname}")
         update_and_save_state(lock_key, time.time())
 
