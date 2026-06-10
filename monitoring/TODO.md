@@ -73,10 +73,11 @@
   - 확인 필요: Login failure metric name, Rate limit metric name
   - 대상: HighLoginFailureRate, RateLimitTriggered
 
-- [ ] PostgresDown 정책 결정
-  - 현재 상태: DB 설치/구성 여부 미확인
-  - 후보: notify_only / Replica Promote / Failover
-  - #19 범위에서는 주석 보류
+- [ ] PostgresDown Remote Adapter 연동 후 활성화
+  - 현재 상태: DB Alert 구조 정리 완료
+  - 방향: PostgreSQL 프로세스/컨테이너 단위 자동복구
+  - 제외: Replica Promote / Failover
+  - 필요 작업: Remote Adapter 구현 및 통합 테스트
 
 - [ ] CloudWatch Alarm Dashboard 반영 범위 확정
 
@@ -109,7 +110,7 @@
   - Provisioned Dashboard 검증 완료
   - Event Timeline / Alert History
 
-- [ ] Recovery Metrics 구성
+- [x] Recovery Metrics 구성
   - 대상:
     - recovery_attempt_total
     - recovery_success_total
