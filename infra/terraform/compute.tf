@@ -36,34 +36,42 @@ resource "aws_instance" "nat" {
   associate_public_ip_address = true
   source_dest_check           = false
   key_name                    = aws_key_pair.kp.key_name
+  user_data_replace_on_change = true # ★ user_data 변경 시 인스턴스 자동 교체
 
   user_data = <<-EOF
     #!/bin/bash
-    set -eux
+    set -uxo pipefail
+    exec > >(tee -a /var/log/user_data_nat.log) 2>&1
+
+    # ★ AL2023는 iptables 미설치 → 반드시 먼저 설치 (iptables-services는 불필요)
+    dnf install -y iptables
+
+    # IP 포워딩
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl -p /etc/sysctl.d/99-nat.conf
 
-    # AL2023: iptables-services 없음 → 규칙 직접 적용 + systemd로 부팅 시 재적용
+    # 현재 부팅 즉시 적용 (단일 NIC라 -o 생략 = egress IF 자동 선택, ens5/eth0 무관)
     iptables -P FORWARD ACCEPT
-    iptables -I FORWARD -j ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
 
+    # 재부팅 시 재적용 (iptables-services 대체용 oneshot, 중복 방지 -C||-A)
     cat <<'SYSTEMD' > /etc/systemd/system/nat.service
     [Unit]
-    Description=NAT Instance Port Forwarding
-    After=network.target
+    Description=NAT Instance MASQUERADE
+    After=network-online.target
+    Wants=network-online.target
 
     [Service]
     Type=oneshot
     RemainAfterExit=yes
-    ExecStart=/sbin/iptables -P FORWARD ACCEPT
-    ExecStart=/sbin/iptables -I FORWARD -j ACCEPT
-    ExecStart=/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
-    
+    ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
+    ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
+
     [Install]
     WantedBy=multi-user.target
     SYSTEMD
 
+    systemctl daemon-reload
     systemctl enable nat.service
   EOF
 
@@ -145,9 +153,31 @@ resource "aws_launch_template" "app" {
   # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
   user_data = base64encode(<<-USERDATA
     #!/bin/bash
+    set -uxo pipefail
+
+    # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
+    #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
+    until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
+    systemctl enable --now tailscaled
+    until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
+      -H "X-aws-ec2-metadata-token-ttl-seconds: 300"); do sleep 2; done
+    IID=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" \
+      http://169.254.169.254/latest/meta-data/instance-id)
+    HN="${var.project}-app-$IID"
+    tailscale up \
+      --authkey=${tailscale_tailnet_key.app_join.key} \
+      --accept-routes=false \
+      --hostname="$HN" \
+      --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
+
+    # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
     docker run -d --restart=always -p 80:8080 \
-    --name lockbank-app ${var.app_image}
+      --name lockbank-app ${var.app_image}
+
+    # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    # docker run -d --restart=always --net=host --name node-exporter \
+    #   quay.io/prometheus/node-exporter
     USERDATA
   )
 
