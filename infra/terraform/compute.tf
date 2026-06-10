@@ -36,34 +36,42 @@ resource "aws_instance" "nat" {
   associate_public_ip_address = true
   source_dest_check           = false
   key_name                    = aws_key_pair.kp.key_name
+  user_data_replace_on_change = true # ★ user_data 변경 시 인스턴스 자동 교체
 
   user_data = <<-EOF
     #!/bin/bash
-    set -eux
+    set -uxo pipefail
+    exec > >(tee -a /var/log/user_data_nat.log) 2>&1
+
+    # ★ AL2023는 iptables 미설치 → 반드시 먼저 설치 (iptables-services는 불필요)
+    dnf install -y iptables
+
+    # IP 포워딩
     echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
     sysctl -p /etc/sysctl.d/99-nat.conf
 
-    # AL2023: iptables-services 없음 → 규칙 직접 적용 + systemd로 부팅 시 재적용
+    # 현재 부팅 즉시 적용 (단일 NIC라 -o 생략 = egress IF 자동 선택, ens5/eth0 무관)
     iptables -P FORWARD ACCEPT
-    iptables -I FORWARD -j ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
 
+    # 재부팅 시 재적용 (iptables-services 대체용 oneshot, 중복 방지 -C||-A)
     cat <<'SYSTEMD' > /etc/systemd/system/nat.service
     [Unit]
-    Description=NAT Instance Port Forwarding
-    After=network.target
+    Description=NAT Instance MASQUERADE
+    After=network-online.target
+    Wants=network-online.target
 
     [Service]
     Type=oneshot
     RemainAfterExit=yes
-    ExecStart=/sbin/iptables -P FORWARD ACCEPT
-    ExecStart=/sbin/iptables -I FORWARD -j ACCEPT
-    ExecStart=/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
-    
+    ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
+    ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
+
     [Install]
     WantedBy=multi-user.target
     SYSTEMD
 
+    systemctl daemon-reload
     systemctl enable nat.service
   EOF
 

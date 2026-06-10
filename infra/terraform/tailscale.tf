@@ -29,8 +29,8 @@ resource "tailscale_device_subnet_routes" "approve_vpc_routes" {
 # DB 기기 대기 (복제용 100.x IP 확보 → outputs 로 노출)
 data "tailscale_device" "db_device" {
   hostname   = "${var.project}-db"
-  wait_for   = "180s"
-  depends_on = [aws_instance.db]
+  wait_for   = "300s"                              # 180 → 300 (NAT 교체+DB 복구 시간 확보)        
+  depends_on = [aws_instance.db, aws_instance.nat] # ★ aws_instance.nat 추가
 }
 
 # App ASG 전용 ephemeral 가입키 (스케일인 시 tailnet에서 자동 삭제)
