@@ -247,7 +247,7 @@ RateLimitTriggered:
 #
 # 보류
 # - PostgreSQL Replica Promote / Failover
-#   - Primary 단순 장애 자동복구 범위 외
+#   - Primary 단순 재기동을 넘어서는 DB 전환/승격은 자동복구 범위 외
 #   - 운영자 승인 또는 후속 구현 검토
 #
 # - RecoveryControllerDown 보호 방식

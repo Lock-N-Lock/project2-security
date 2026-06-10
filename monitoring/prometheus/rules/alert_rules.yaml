@@ -27,12 +27,9 @@ groups:
       # PostgresExporterDown: postgres-exporter 장애
       # PostgresDown: PostgreSQL 자체 장애(pg_up)
       # DBHighCPU / DBHighMemory: DB 노드 리소스 경고
+      # DBHighCPU / DBHighMemory는 db-node에서 node_exporter 메트릭 수집 시 활성화
       # Recovery Controller는 온프레에서 동작하므로 AWS DB 복구는 원격 실행 방식 필요
       # Replica Promote / Failover는 자동화 범위 외
-      # DBHighCPU / DBHighMemory는 db-node에서 node_exporter 메트릭 수집 시 활성화
-      # PostgresExporterDown: postgres-exporter 장애
-      # PostgresDown: PostgreSQL 자체 장애(pg_up)
-      # DBHighCPU / DBHighMemory: DB 노드 리소스 경고
       # ==================================================
 
       # - alert: PostgresExporterDown
