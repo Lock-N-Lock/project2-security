@@ -32,7 +32,7 @@
   - 목적: Alertmanager Webhook Timeout 방지
   - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
 
-- [ ] 운영 컴포넌트 Self-Monitoring 한계 검토
+- [x] 운영 컴포넌트 Self-Monitoring 한계 검토
   - 출처: PR #19 Gemini Review
   - 대상: PrometheusDown, AlertmanagerDown
   - 방향: 외부 Health Check 또는 별도 Monitoring 계층 검토
@@ -109,14 +109,17 @@
   - Grafana 자동 로드 확인
   - Provisioned Dashboard 검증 완료
   - Event Timeline / Alert History
+  - Security Center iframe 연동 검증 완료
 
 - [x] Recovery Metrics 구성
   - 대상:
     - recovery_attempt_total
     - recovery_success_total
-    - recovery_failed_total
   - 필요 작업:
     - Recovery Controller 메트릭 노출
     - Prometheus Scrape 설정
     - Grafana Recovery 패널 연동 검증
+
+- [ ] CloudWatch Alarm Dashboard 반영 범위 확정
+  - 현재 상태: 후보 이벤트 및 연계 방향 정리 완료
 
