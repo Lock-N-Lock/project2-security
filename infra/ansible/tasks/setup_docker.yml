@@ -43,18 +43,14 @@
     mode: '0755'
 
 - name: "3.6단계: GitHub에서 Docker Compose v2 바이너리 다운로드"
-  ansible.builtin.command:
-    cmd: "curl -SLf -o /usr/libexec/docker/cli-plugins/docker-compose https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64"
-    creates: /usr/libexec/docker/cli-plugins/docker-compose
+  ansible.builtin.get_url:
+    url: https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64
+    dest: /usr/libexec/docker/cli-plugins/docker-compose
+    mode: '0755'
   register: compose_download
   until: compose_download is success
   retries: 3
   delay: 5
-
-- name: "3.6.1단계: Docker Compose 실행 권한 부여"
-  ansible.builtin.file:
-    path: /usr/libexec/docker/cli-plugins/docker-compose
-    mode: '0755'
 
 - name: "4단계: 도커 서비스 활성화 및 즉시 시작"
   ansible.builtin.systemd:

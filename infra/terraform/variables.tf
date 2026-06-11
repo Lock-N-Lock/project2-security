@@ -134,16 +134,16 @@ variable "route53_zone_name" {
 
 # cloudflare 전용 — Zone ID + API 토큰 (토큰은 환경변수 권장)
 variable "cloudflare_zone_id" {
-  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
   type        = string
   default     = ""
+  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
 }
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
   type        = string
-  default     = ""
+  default     = "abcdefghijklmnopqrstuvwxyz0123456789abcd"
   sensitive   = true
+  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
 }
 
 variable "tailnet_name" {
@@ -163,8 +163,28 @@ variable "admin_ingress_cidr" {
   # default 제거 → 미입력 시 에러로 강제 (0.0.0.0/0 사고 방지)
 }
 
-
 variable "app_image" {
-  type    = string
-  default = "lockandlock/lock-app:latest"
+  description = "FastAPI 애플리케이션의 Docker 이미지 경로 (Makefile 등에서 자동 주입)"
+  type        = string
+}
+
+variable "db_host_replica" {
+  description = "Replica DB의 IP (Tailscale IP)"
+  type        = string
+}
+
+variable "db_user" {
+  description = "DB 사용자 이름"
+  type        = string
+}
+
+variable "db_password" {
+  description = "DB 비밀번호"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "DB 이름"
+  type        = string
 }

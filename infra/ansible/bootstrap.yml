@@ -21,13 +21,13 @@
     - name: "user1 계정 셋업 및 권한 부여"
       ansible.builtin.include_tasks: tasks/setup_user1.yml
       vars:
-        user1_pub_key: "{{ lookup('file', '~/.ssh/id_ed25519.pub') }}"
+        user1_pub_key: "{{ lookup('pipe', 'ssh-keygen -y -f ' + playbook_dir + '/../terraform/lb-key.pem') }}"
 
 - name: "온프레미스 Replica 인스턴스 초기 셋팅 (root)"
   hosts: lb-postgres-replica
   remote_user: root
   vars:
-    ansible_ssh_private_key_file: "~/test2_key.pem"
+    ansible_ssh_private_key_file: "{{ playbook_dir }}/../terraform/lb-key.pem"
   become: true
   gather_facts: false   # wait_for_connection 이전에 facts 수집 시도하지 않음
 
