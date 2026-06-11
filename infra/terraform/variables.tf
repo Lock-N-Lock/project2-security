@@ -167,3 +167,24 @@ variable "app_image" {
   type    = string
   default = "lockandlock/lock-app:latest"
 }
+
+variable "db_host_replica" {
+  description = "Replica DB의 IP (Tailscale IP)"
+  type        = string
+}
+
+variable "db_user" {
+  description = "DB 사용자 이름"
+  type        = string
+}
+
+variable "db_password" {
+  description = "DB 비밀번호"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "DB 이름"
+  type        = string
+}

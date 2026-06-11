@@ -37,3 +37,8 @@ tailscale_api_key = "tskey-api-your-api-key-here" # # ◀ 여기에 ~/.tailscale
 asg_min     = 0
 asg_desired = 0
 # (green ASG는 이미 코드에서 min=0/desired=0 → 그대로)
+
+# ── DB ──
+db_user     = "lb-user"
+db_password = "lb-user"
+db_name     = "lb-db"

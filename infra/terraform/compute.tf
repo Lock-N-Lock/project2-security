@@ -68,6 +68,7 @@ resource "aws_instance" "nat" {
     ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
     ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
     ExecStart=/usr/sbin/iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
     [Install]
     WantedBy=multi-user.target
     SYSTEMD
@@ -157,6 +158,7 @@ resource "aws_launch_template" "app" {
 
     # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
     #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
+    dnf install -y iptables
     until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
     systemctl enable --now tailscaled
     until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
@@ -172,7 +174,13 @@ resource "aws_launch_template" "app" {
 
     # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
+    docker pull ${var.app_image} || true
     docker run -d --restart=always -p 80:8080 \
+      -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
+      -e DB_HOST_REPLICA="${var.db_host_replica}" \
+      -e DB_USER="${var.db_user}" \
+      -e DB_PASSWORD="${var.db_password}" \
+      -e DB_NAME="${var.db_name}" \
       --name lockbank-app ${var.app_image}
 
     # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
