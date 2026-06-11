@@ -49,6 +49,23 @@ check:
 	./check.sh
 
 # ── Terraform ─────────────────────────────────────────────
+define TF_WITH_TS
+	@TS_STATUS_OUT=$$(tailscale status 2>&1); \
+	if echo "$$TS_STATUS_OUT" | grep -qiE "logged out|offline"; then \
+		echo "❌ Tailscale 상태가 올바르지 않습니다 (Logged out 또는 Offline)."; \
+		echo "   'tailscale up' 또는 'bootstrap_tailscale.sh'를 실행하여 활성화해 주세요."; \
+		exit 1; \
+	fi; \
+	REPLICA_TS_IP=$$(tailscale ip -4 2>/dev/null | head -1); \
+	if [ -z "$$REPLICA_TS_IP" ]; then \
+		echo "❌ Tailscale IP를 찾을 수 없습니다. Tailscale을 확인하세요."; \
+		exit 1; \
+	fi; \
+	echo "✅ Detected Replica DB Tailscale IP: $$REPLICA_TS_IP"; \
+	export TF_VAR_db_host_replica=$$REPLICA_TS_IP; \
+	cd $(TF_DIR) &&
+endef
+
 init:
 	cd $(TF_DIR) && terraform init -backend-config=hcl/backend.hcl
 
@@ -59,20 +76,20 @@ validate:
 	cd $(TF_DIR) && terraform validate
 
 plan:
-	cd $(TF_DIR) && terraform plan
+	$(TF_WITH_TS) terraform plan
 
 apply:
-	cd $(TF_DIR) && terraform apply -parallelism=3
+	$(TF_WITH_TS) terraform apply -parallelism=3
 
 apply-auto:
-	cd $(TF_DIR) && terraform apply --auto-approve -parallelism=3
+	$(TF_WITH_TS) terraform apply --auto-approve -parallelism=3
 
 # ── Ansible (DB 배포) ─────────────────────────────────────
 deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
-	cd $(TF_DIR2) && ansible-playbook site.yml
+	cd $(TF_DIR2) && ansible-playbook db-site.yml
 
 ## 인프라 + DB까지 한 번에
-service: apply-auto deploy-db   
+service: apply-auto deploy-db
 
 output:
 	@echo ""

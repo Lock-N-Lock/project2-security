@@ -37,7 +37,8 @@ resource "local_file" "ansible_inventory" {
         lb-postgres-replica:
           hosts:
             replica-host:
-              ansible_host: 172.16.8.102
+              ansible_connection: local
+              ansible_host: localhost
       vars:
         project: ${var.project}
         db_backup_bucket: ${aws_s3_bucket.db_backup.bucket}

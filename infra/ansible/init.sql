@@ -19,12 +19,12 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- users 샘플 데이터 5개 삽입 (중복 방지 설정)
 INSERT INTO users (username, password, account_number, balance) VALUES
-('user1', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-001', 100000),
-('user2', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-002', 250000),
-('user3', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-003', 50000),
-('user4', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-004', 1200000),
-('user5', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-005', 0),
-('user6', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-006', 18900)
+('user1', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-001', 1000000),
+('user2', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-002', 1000000),
+('user3', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-003', 1000000),
+('user4', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-004', 1000000),
+('user5', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-005', 1000000),
+('user6', '$2b$12$JcWi5Kysv7oxoTuSKcaxLOOeN/jDqIthPDAOivEvd6XVIuYgB6WTS', '1002-006', 1000000)
 ON CONFLICT (username) DO NOTHING;
 
 -- transactions 샘플 데이터 5개 삽입 (외래키 id 자동 조회를 위해 서브쿼리 사용)
