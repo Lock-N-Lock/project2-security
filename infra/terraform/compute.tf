@@ -53,6 +53,7 @@ resource "aws_instance" "nat" {
     # 현재 부팅 즉시 적용 (단일 NIC라 -o 생략 = egress IF 자동 선택, ens5/eth0 무관)
     iptables -P FORWARD ACCEPT
     iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE
+    iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
     # 재부팅 시 재적용 (iptables-services 대체용 oneshot, 중복 방지 -C||-A)
     cat <<'SYSTEMD' > /etc/systemd/system/nat.service
@@ -66,6 +67,7 @@ resource "aws_instance" "nat" {
     RemainAfterExit=yes
     ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
     ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
+    ExecStart=/usr/sbin/iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
     [Install]
     WantedBy=multi-user.target
@@ -110,7 +112,6 @@ resource "aws_instance" "bastion" {
     #!/bin/bash
     # 로그 파일 생성 및 모든 출력 기록
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
-    
     # 1. 호스트네임 및 시스템 기본 설정
     hostnamectl set-hostname "${var.project}-bastion"
     
@@ -157,6 +158,7 @@ resource "aws_launch_template" "app" {
 
     # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
     #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
+    dnf install -y iptables
     until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
     systemctl enable --now tailscaled
     until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
@@ -172,7 +174,13 @@ resource "aws_launch_template" "app" {
 
     # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
+    docker pull ${var.app_image} || true
     docker run -d --restart=always -p 80:8080 \
+      -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
+      -e DB_HOST_REPLICA="${var.db_host_replica}" \
+      -e DB_USER="${var.db_user}" \
+      -e DB_PASSWORD="${var.db_password}" \
+      -e DB_NAME="${var.db_name}" \
       --name lockbank-app ${var.app_image}
 
     # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
@@ -252,6 +260,7 @@ resource "aws_instance" "db" {
   user_data = <<-EOF
     #!/bin/bash
     exec > >(tee -a /var/log/user_data_tailscale.log) 2>&1
+    # 1. 호스트네임 및 시스템 기본 설정
     hostnamectl set-hostname "${var.project}-db"
     until ping -c 1 8.8.8.8 &> /dev/null; do sleep 5; done
     curl -fsSL https://tailscale.com/install.sh | sh

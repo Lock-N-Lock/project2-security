@@ -1,0 +1,23 @@
+version: '3.8'
+
+networks:
+  lb-net-main:
+volumes:
+  pgdata_main:
+
+services:
+  lb_database_main:
+    image: postgres:15
+    container_name: lb-postgres-main
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: lb-user
+      POSTGRES_PASSWORD: lb-user
+      POSTGRES_DB: lb-db
+    volumes:
+      - pgdata_main:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/10-init.sql
+      - ./init-replication.sh:/docker-entrypoint-initdb.d/20-init-replication.sh
+    networks:
+      - lb-net-main

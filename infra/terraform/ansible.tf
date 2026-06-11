@@ -13,7 +13,7 @@ locals {
   db_ts_ip = try(data.tailscale_device.db_device.addresses[0], "")
 }
 
-# ── 인벤토리 (DB 정적 타깃) ───────────────────────────────
+# ── 인벤토리 (DB 정적 및 이중화 타깃 통합) ───────────────────
 resource "local_file" "ansible_inventory" {
   filename        = "${path.module}/../ansible/inventory.yml"
   file_permission = "0644"
@@ -26,10 +26,24 @@ resource "local_file" "ansible_inventory" {
               ansible_host: ${local.db_ts_ip}
               ansible_user: ec2-user
               ansible_ssh_private_key_file: ${abspath(local_file.ssh_key.filename)}
+        bastion:
+          hosts:
+            bastion:
+              ansible_host: ${aws_instance.bastion.public_ip}
+        lb-postgres-main:
+          hosts:
+            db-host:
+              ansible_host: ${local.db_ts_ip}
+        lb-postgres-replica:
+          hosts:
+            replica-host:
+              ansible_connection: local
+              ansible_host: localhost
       vars:
         project: ${var.project}
         db_backup_bucket: ${aws_s3_bucket.db_backup.bucket}
         ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+        tailscale_authkey: ${tailscale_tailnet_key.ec2_join.key}
   EOT
 }
 
