@@ -141,7 +141,7 @@ variable "cloudflare_zone_id" {
 
 variable "cloudflare_api_token" {
   type        = string
-  default     = "abcdefghijklmnopqrstuvwxyz0123456789abcd"
+  default     = ""
   sensitive   = true
   description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
 }
@@ -164,8 +164,8 @@ variable "admin_ingress_cidr" {
 }
 
 variable "app_image" {
-  description = "FastAPI 애플리케이션의 Docker 이미지 경로 (Makefile 등에서 자동 주입)"
-  type        = string
+  type    = string
+  default = "lockandlock/lock-app:latest"
 }
 
 variable "db_host_replica" {
