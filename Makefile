@@ -7,6 +7,13 @@
 #  Makefile을 통해 실행되는 모든 명령이 격리 폴더를 바라보게 합니다.
 export DOCKER_CONFIG := $(CURDIR)/.docker_config
 
+# ~/.docker/config.json 에서 Docker Hub 로그인 ID 동적 파싱
+DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' ~/.docker/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
+
+ifeq ($(DOCKER_USER),)
+  DOCKER_USER := lockandlock
+endif
+
 TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
@@ -51,18 +58,19 @@ check:
 # ── Terraform ─────────────────────────────────────────────
 define TF_WITH_TS
 	@TS_STATUS_OUT=$$(tailscale status 2>&1); \
-	if echo "$$TS_STATUS_OUT" | grep -qiE "logged out|offline"; then \
-		echo "❌ Tailscale 상태가 올바르지 않습니다 (Logged out 또는 Offline)."; \
-		echo "   'tailscale up' 또는 'bootstrap_tailscale.sh'를 실행하여 활성화해 주세요."; \
-		exit 1; \
-	fi; \
 	REPLICA_TS_IP=$$(tailscale ip -4 2>/dev/null | head -1); \
 	if [ -z "$$REPLICA_TS_IP" ]; then \
 		echo "❌ Tailscale IP를 찾을 수 없습니다. Tailscale을 확인하세요."; \
 		exit 1; \
 	fi; \
+	LOCAL_STATUS=$$(echo "$$TS_STATUS_OUT" | grep "$$REPLICA_TS_IP"); \
+	if echo "$$LOCAL_STATUS" | grep -qiE "logged out|offline"; then \
+		echo "❌ 로컬 Tailscale 상태가 올바르지 않습니다 (Logged out 또는 Offline)."; \
+		exit 1; \
+	fi; \
 	echo "✅ Detected Replica DB Tailscale IP: $$REPLICA_TS_IP"; \
 	export TF_VAR_db_host_replica=$$REPLICA_TS_IP; \
+	export TF_VAR_app_image=$(DOCKER_USER)/lock-app:1.0; \
 	cd $(TF_DIR) &&
 endef
 
@@ -86,10 +94,26 @@ apply-auto:
 
 # ── Ansible (DB 배포) ─────────────────────────────────────
 deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
+	@REAL_DB_IP=$$(tailscale status | grep -E "lb-db(-[0-9]+)?" | grep -v "offline" | awk '{print $$1}'); \
+	if [ -n "$$REAL_DB_IP" ]; then \
+		echo "🔄 Updating database IP in inventory.yml to active Tailscale IP: $$REAL_DB_IP"; \
+		sed -i "s/100\.[0-9]\+\.[0-9]\+\.[0-9]\+/$$REAL_DB_IP/g" $(TF_DIR2)/inventory.yml; \
+	fi
 	cd $(TF_DIR2) && ansible-playbook db-site.yml
+	@echo "🔌 Warming up Tailscale tunnel to App instances..."
+	@APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}'); \
+	if [ -n "$$APP_IP" ]; then ping -c 3 $$APP_IP >/dev/null 2>&1 || true; fi
+
+build-push:
+	@mkdir -p $(CURDIR)/.docker_config
+	@if [ -f ~/.docker/config.json ]; then cp ~/.docker/config.json $(CURDIR)/.docker_config/config.json; fi
+	@echo "🚀 1단계: 로컬에서 FastAPI Docker 이미지 빌드 ($(DOCKER_USER)/lock-app:latest)..."
+	docker build -t $(DOCKER_USER)/lock-app:latest ./docker
+	@echo "🚀 Docker Hub에 이미지 푸시..."
+	docker push $(DOCKER_USER)/lock-app:latest
 
 ## 인프라 + DB까지 한 번에
-service: apply-auto deploy-db
+service: build-push apply-auto deploy-db
 
 output:
 	@echo ""

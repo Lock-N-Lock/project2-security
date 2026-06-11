@@ -175,7 +175,9 @@ resource "aws_launch_template" "app" {
     # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
     docker pull ${var.app_image} || true
-    docker run -d --restart=always -p 80:8080 \
+    docker run -d --restart=always \
+      -p 80:8080 \
+      -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \
       -e DB_USER="${var.db_user}" \
@@ -183,9 +185,10 @@ resource "aws_launch_template" "app" {
       -e DB_NAME="${var.db_name}" \
       --name lockbank-app ${var.app_image}
 
-    # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
-    # docker run -d --restart=always --net=host --name node-exporter \
-    #   quay.io/prometheus/node-exporter
+
+    # 3) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    docker run -d --restart=always --net=host --name node-exporter \
+      quay.io/prometheus/node-exporter
     USERDATA
   )
 

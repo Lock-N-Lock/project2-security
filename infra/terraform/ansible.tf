@@ -44,6 +44,8 @@ resource "local_file" "ansible_inventory" {
         db_backup_bucket: ${aws_s3_bucket.db_backup.bucket}
         ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
         tailscale_authkey: ${tailscale_tailnet_key.ec2_join.key}
+        tailscale_api_key: ${var.tailscale_api_key}
+        tailnet_name: ${var.tailnet_name}
   EOT
 }
 
