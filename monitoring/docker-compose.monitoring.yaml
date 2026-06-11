@@ -48,6 +48,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_METRICS_ENABLED=true
     ports:
       - "3000:3000"
     depends_on:
@@ -109,6 +110,19 @@ services:
     networks:
       - monitoring
 
+  telegram-notifier:
+    build:
+      context: ./telegram-notifier
+    container_name: lb-telegram-notifier
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    networks:
+      - monitoring
+
   recovery:
     build:
       context: ./recovery
@@ -123,17 +137,18 @@ services:
       - "8001:8000"
     networks:
       - monitoring
-  
-  tailscale-sd:                    # Tailscale → Prometheus http_sd 헬퍼
+
+  tailscale-sd:
+    # Tailscale → Prometheus http_sd 헬퍼
     build: ./tailscale-sd
     environment:
-      TS_API_KEY: ${TS_API_KEY}          # monitoring/.env (★gitignore)
+      TS_API_KEY: ${TS_API_KEY} # monitoring/.env (★gitignore)
       TS_TAILNET: ${TS_TAILNET:--}
       EXPORTER_PORTS: "9100,9113,8080,9187"
     restart: unless-stopped
     networks:
       - monitoring
- 
+
 volumes:
   prometheus_data:
   alertmanager_data:

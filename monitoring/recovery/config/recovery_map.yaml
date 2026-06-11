@@ -85,13 +85,18 @@ PrometheusDown:
 
   command: "bash ./actions/docker_restart.sh lb-prometheus"
 
+  pre_verify:
+    type: http
+    url: "http://prometheus:9090/-/ready"
+    timeout: 5
+
   verify:
     type: http
     url: "http://prometheus:9090/-/ready"
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # 운영 컴포넌트
@@ -111,13 +116,18 @@ GrafanaDown:
 
   command: "bash ./actions/docker_restart.sh lb-grafana"
 
+  pre_verify:
+    type: http
+    url: "http://grafana:3000/api/health"
+    timeout: 5
+
   verify:
     type: http
     url: "http://grafana:3000/api/health"
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # 운영 컴포넌트
@@ -137,13 +147,18 @@ AlertmanagerDown:
 
   command: "bash ./actions/docker_restart.sh lb-alertmanager"
 
+  pre_verify:
+    type: http
+    url: "http://alertmanager:9093/-/ready"
+    timeout: 5
+
   verify:
     type: http
     url: "http://alertmanager:9093/-/ready"
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 NginxExporterDown:
   description: "Nginx Exporter service is down"
@@ -160,13 +175,18 @@ NginxExporterDown:
 
   command: "bash ./actions/docker_restart.sh lb-nginx-exporter"
 
+  pre_verify:
+    type: http
+    url: "http://nginx-exporter:9113/metrics"
+    timeout: 5
+
   verify:
     type: http
     url: "http://nginx-exporter:9113/metrics"
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # --------------------------------------------------
