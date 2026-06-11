@@ -1,11 +1,49 @@
 # Monitoring TODO
 
+## Notification
+
+- [ ] Telegram Bot 구성
+  - Bot 생성
+  - 운영 채널/그룹 생성
+  - Chat ID 확인
+
+- [ ] Alertmanager → Telegram 연동
+  - 운영 컴포넌트 Alert 기준 테스트
+  - 대상:
+    - PrometheusDown
+    - AlertmanagerDown
+    - GrafanaDown
+    - NginxExporterDown
+
+- [ ] Alert Severity 기준 정리
+  - Critical
+  - Warning
+  - Info
+
+- [ ] Telegram Message Template 정리
+  - Alert Name
+  - Severity
+  - Summary
+  - Recovery Status
+
+- [ ] Alert Inventory 작성
+  - Alert
+  - Severity
+  - Auto Recovery 여부
+  - Verify 방식
+  - Dashboard 위치
+
 ## Recovery Hardening
 
 - [ ] CloudWatch Alarm Telegram 알림 연동
   - 흐름: CloudWatch Alarm → SNS → Lambda → Telegram
   - 현재 상태: CloudWatch Alarm → SNS Topic 연결 완료
-  - 필요 작업: Lambda, IAM Role, SNS Subscription, Telegram Bot Token / Chat ID 변수 구성
+  - 필요 작업:
+    - Lambda
+    - IAM Role
+    - SNS Subscription
+    - Telegram Bot Token / Chat ID 변수 구성
+  - 우선순위: 후순위
 
 - [ ] docker inspect 기반 조회 리팩토링
   - 출처: PR #10 Review
@@ -13,15 +51,12 @@
 
 - [x] recovery_map.yaml 캐싱 적용 검토
   - 출처: PR #10 Review
-  - 답변: "캐싱 개선은 Hardening 단계에서 검토"
 
 - [x] recovery_map.yaml 로딩 예외 처리 개선
   - 출처: PR #10 Review
-  - 답변: "예외 처리 개선은 Hardening 단계에서 검토"
 
 - [x] 표준 Python logging 적용 검토
   - 출처: PR #10 Review
-  - 답변: "표준 logging + RotatingFileHandler 교체 검토"
 
 - [ ] docker.sock 권한 제한
   - 출처: PR #14 Gemini Review
@@ -29,55 +64,82 @@
 
 - [x] Recovery Action 비동기 처리 검토
   - 출처: PR #19 Gemini Review
-  - 목적: Alertmanager Webhook Timeout 방지
-  - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
 
 - [x] 운영 컴포넌트 Self-Monitoring 한계 검토
   - 출처: PR #19 Gemini Review
-  - 대상: PrometheusDown, AlertmanagerDown
-  - 방향: 외부 Health Check 또는 별도 Monitoring 계층 검토
 
 - [x] Recovery Lock / Cooldown 구현 및 강화
-  - 목적: 동일 Alert 반복 수신 시 중복 복구 실행 방지
   - 범위: #19 Hardening 반영
-  - 방식: active_recoveries 기반 Lock, recovery_state.json 기반 Cooldown 상태 유지
 
 ## Alert / Recovery Policy
 
 ### 반영 완료
 
 - [x] YAML 파일 확장자 `.yaml` 통일
-  - 대상: prometheus, alertmanager, alert_rules, recovery_map
 
 - [x] 운영 컴포넌트 Alert Rule 추가
-  - 대상: PrometheusDown, AlertmanagerDown, GrafanaDown, NginxExporterDown
+  - PrometheusDown
+  - AlertmanagerDown
+  - GrafanaDown
+  - NginxExporterDown
 
 - [x] 운영 컴포넌트 Recovery Policy 추가
-  - 대상: PrometheusDown, AlertmanagerDown, GrafanaDown, NginxExporterDown
-  - 정책: auto_recovery / notify=false / maintenance.log
+  - auto_recovery
+  - notify=false
+  - maintenance.log
 
 - [x] Grafana datasource에 Loki 추가
-  - 목적: Recovery / Event Log 조회 기반 구성
 
 - [x] Loki / Promtail 기반 로그 수집 구성
-  - 대상: recovery.log, maintenance.log, event.log, critical.log
-  - Grafana Explore 쿼리: `{job="recovery-logs"}`
 
 ### 확인 필요
 
 - [ ] B Track App 정보 확인 후 BankAppDown 정책 값 확정
-  - 확인 필요: App container name, Health endpoint, Prometheus job_name
-  - 현재 상태: recovery_map.yaml에 TODO 값으로 선반영
+  - App container name
+  - Health endpoint
+  - Prometheus job_name
 
-- [ ] Security Alert metric 이름 확정
-  - 확인 필요: Login failure metric name, Rate limit metric name
-  - 대상: HighLoginFailureRate, RateLimitTriggered
+- [ ] Security Alert Metric 이름 확정
+  - Login Failure Metric
+  - Rate Limit Metric
 
-- [ ] PostgresDown Remote Adapter 연동 후 활성화
-  - 현재 상태: DB Alert 구조 정리 완료
-  - 방향: PostgreSQL 프로세스 상태 기반 원격 복구 구조 검토
-  - 제외: Replica Promote / Failover
-  - 필요 작업: Remote Adapter 구현 및 통합 테스트
+- [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
+
+  확인 필요:
+  - DB container name
+  - PostgreSQL Exporter container name
+  - 원격 실행 방식(Remote Adapter)
+
+  Verify:
+  - PostgresDown → pg_isready
+  - PostgresExporterDown → metrics endpoint 또는 Prometheus up
+
+  제외:
+  - Replica Promote
+  - Failover
+  - DB 연결 정보 전환
+
+  필요 작업:
+  - Recovery Policy 값 확정
+  - 통합 테스트
+
+## Dashboard / History
+
+- [x] Recovery 로그 조회 기반 구성
+
+- [x] Dashboard Panel 구성
+  - Security
+  - Application
+  - Infrastructure
+  - Recovery
+
+- [x] Dashboard Provisioning 구성 및 검증
+
+- [x] Recovery Metrics 구성
+  - recovery_attempt_total
+  - recovery_success_total
+
+### 확인 필요
 
 - [ ] CloudWatch Alarm Dashboard 반영 범위 확정
 
@@ -88,38 +150,39 @@
   - ASGScaleOut
 
   논의사항:
-  - Dashboard 패널로 표시할지
-  - Alert History 형태로 표시할지
-  - MVP 범위에서 제외할지
+  - Dashboard 패널 표시
+  - Alert History 표시
+  - MVP 제외 여부
 
-## Dashboard / History
+- [ ] Dashboard 시나리오 매핑 정리
 
-- [x] Recovery 로그 조회 기반 구성
-  - Loki / Promtail로 Recovery Controller 로그 수집 확인
-  - Grafana Explore에서 `{job="recovery-logs"}` 조회 가능
+  시나리오:
+  - 로그인 공격
+  - API Flooding
+  - 트래픽 증가 / ASG
+  - App 장애
+  - DB 장애
+  - 안전 배포
 
-- [x] Dashboard Panel 구성
-  - Security
-  - Application
-  - Infrastructure
-  - Recovery
+  목적:
+  - 발표 자료 연계
+  - Dashboard 설명 자료 정리
 
-- [x] Dashboard Provisioning 구성 및 검증
-  - Dashboard JSON Repository 관리
-  - Grafana 자동 로드 확인
-  - Provisioned Dashboard 검증 완료
-  - Event Timeline / Alert History
-  - Security Center iframe 연동 검증 완료
+- [ ] Monitoring & Recovery Quick Guide 작성
 
-- [x] Recovery Metrics 구성
-  - 대상:
-    - recovery_attempt_total
-    - recovery_success_total
-  - 필요 작업:
-    - Recovery Controller 메트릭 노출
-    - Prometheus Scrape 설정
-    - Grafana Recovery 패널 연동 검증
+  포함 내용:
+  - 전체 흐름
+    - Prometheus
+    - Alertmanager
+    - Telegram
+    - Recovery Controller
+    - Loki
+    - Grafana
 
-- [ ] CloudWatch Alarm Dashboard 반영 범위 확정
-  - 현재 상태: 후보 이벤트 및 연계 방향 정리 완료
+  - Auto Recovery vs Notify Only
 
+  - CloudWatch vs Prometheus 역할 구분
+
+  - Dashboard 섹션 설명
+
+  - 주요 Alert 설명
