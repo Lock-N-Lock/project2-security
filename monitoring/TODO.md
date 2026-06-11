@@ -7,6 +7,17 @@
   - 운영 채널/그룹 생성
   - Chat ID 확인
 
+- [ ] Telegram 설정 가이드 작성
+  - .env.example 제공
+  - TELEGRAM_BOT_TOKEN
+  - TELEGRAM_CHAT_ID
+  - 개인 환경 적용 방법 문서화
+
+- [ ] Notification Channel 운영 정책 정리
+  - 개인 테스트 채널
+  - 팀 공용 채널
+  - 최종 시연 환경 적용 기준 정리
+
 - [ ] Alertmanager → Telegram 연동
   - 운영 컴포넌트 Alert 기준 테스트
   - 대상:
