@@ -68,6 +68,7 @@ resource "aws_instance" "nat" {
     ExecStart=/usr/sbin/iptables -P FORWARD ACCEPT
     ExecStart=/bin/bash -c '/usr/sbin/iptables -t nat -C POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE 2>/dev/null || /usr/sbin/iptables -t nat -A POSTROUTING -s ${var.vpc_cidr} -j MASQUERADE'
     ExecStart=/usr/sbin/iptables -t mangle -A FORWARD -p tcp -m tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
     [Install]
     WantedBy=multi-user.target
     SYSTEMD
