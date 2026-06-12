@@ -164,8 +164,8 @@ variable "admin_ingress_cidr" {
 }
 
 variable "app_image" {
-  type    = string
-  default = "lockandlock/lock-app:latest"
+  description = "FastAPI 애플리케이션의 Docker 이미지 경로 (Makefile 등에서 자동 주입)"
+  type        = string
 }
 
 variable "db_host_replica" {
