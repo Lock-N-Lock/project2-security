@@ -7,8 +7,8 @@
 #  Makefile을 통해 실행되는 모든 명령이 격리 폴더를 바라보게 합니다.
 export DOCKER_CONFIG := $(CURDIR)/.docker_config
 
-# ~/.docker/config.json 에서 Docker Hub 로그인 ID 동적 파싱
-DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' ~/.docker/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
+# 격리 폴더($(DOCKER_CONFIG))의 config.json에서 Docker Hub 로그인 ID 동적 파싱
+DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' $(DOCKER_CONFIG)/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
 
 ifeq ($(DOCKER_USER),)
   DOCKER_USER := lockandlock
