@@ -9,9 +9,13 @@
   become: true
 
   tasks:
-    - name: "0.1단계: DNS 서버 강제 임시 지정 (8.8.8.8)"
-      ansible.builtin.shell: |
-        echo "nameserver 8.8.8.8" > /etc/resolv.conf
+    - name: "0.1단계: DNS 서버 보조 추가 (8.8.8.8)"
+      ansible.builtin.lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver 8.8.8.8"
+        state: present
+        insertafter: EOF
+        create: false
 
     - name: "0.5단계: 도커 및 Compose 엔진 공통 셋업"
       ansible.builtin.include_tasks: tasks/setup_docker.yml

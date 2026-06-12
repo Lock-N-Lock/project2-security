@@ -158,6 +158,8 @@ href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
 
     <form action="/login" method="post">
 
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
         <input
             type="text"
             name="username"

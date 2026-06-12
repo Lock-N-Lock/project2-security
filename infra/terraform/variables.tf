@@ -141,7 +141,7 @@ variable "cloudflare_zone_id" {
 
 variable "cloudflare_api_token" {
   type        = string
-  default     = "abcdefghijklmnopqrstuvwxyz0123456789abcd"
+  default     = ""
   sensitive   = true
   description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
 }
