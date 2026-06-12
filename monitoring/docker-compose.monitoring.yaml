@@ -144,7 +144,8 @@ services:
     environment:
       TS_API_KEY: ${TS_API_KEY} # monitoring/.env (★gitignore)
       TS_TAILNET: ${TS_TAILNET:--}
-      EXPORTER_PORTS: "9100,9113,8080,9187"
+      EXPORTER_PORTS: "9100,8080"
+      DB_PORTS: "9100,9187"
     restart: unless-stopped
     networks:
       - monitoring

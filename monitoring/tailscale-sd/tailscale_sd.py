@@ -50,7 +50,11 @@ def _targets(match, ports):
     return out
 
 def app_targets():
-    return _targets(lambda d: APP_TAG in (d.get("tags") or []), APP_PORTS)
+    return _targets(
+        lambda d: APP_TAG in (d.get("tags") or [])
+                  or d.get("hostname", "").startswith("lb-app-i-"),
+        APP_PORTS
+    )
 
 def db_targets():
     return _targets(
