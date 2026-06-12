@@ -2,6 +2,79 @@ groups:
   - name: monitoring
 
     rules:
+      # ==================================================
+      # Database Alerts
+      # DB 노드 배포 및 postgres-exporter scrape 검증 후 활성화
+      # Recovery Controller는 온프레에서 동작하므로 AWS DB 복구는 원격 실행 방식 필요
+      # Replica Promote / Failover는 자동화 범위 외
+      # ==================================================
+
+      # - alert: PostgresDown
+      #   expr: up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      #     category: database
+      #     service: postgres
+      #   annotations:
+      #     summary: PostgreSQL Down
+      #     description: PostgreSQL exporter target is down.
+
+
+      # ==================================================
+      # Database Alerts
+      # DB 노드 배포 및 exporter scrape 검증 후 활성화
+      # PostgresExporterDown: postgres-exporter 장애
+      # PostgresDown: PostgreSQL 자체 장애(pg_up)
+      # DBHighCPU / DBHighMemory: DB 노드 리소스 경고
+      # DBHighCPU / DBHighMemory는 db-node에서 node_exporter 메트릭 수집 시 활성화
+      # Recovery Controller는 온프레에서 동작하므로 AWS DB 복구는 원격 실행 방식 필요
+      # Replica Promote / Failover는 자동화 범위 외
+      # ==================================================
+
+      # - alert: PostgresExporterDown
+      #   expr: up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #     category: database
+      #     service: postgres-exporter
+      #   annotations:
+      #     summary: PostgreSQL Exporter Down
+      #     description: PostgreSQL exporter target is down.
+
+      # - alert: PostgresDown
+      #   expr: pg_up{job="db-node"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: critical
+      #     category: database
+      #     service: postgres
+      #   annotations:
+      #     summary: PostgreSQL Down
+      #     description: PostgreSQL exporter is reachable, but PostgreSQL is not responding.
+
+      # - alert: DBHighCPU
+      #   expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{job="db-node", mode="idle"}[5m])) * 100) > 85
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     category: database
+      #     service: db-node
+      #   annotations:
+      #     summary: DB CPU 85% 초과
+      #     description: DB node CPU usage is over 85% for 5 minutes.
+
+      # - alert: DBHighMemory
+      #   expr: (1 - node_memory_MemAvailable_bytes{job="db-node"} / node_memory_MemTotal_bytes{job="db-node"}) * 100 > 85
+      #   for: 5m
+      #   labels:
+      #     severity: warning
+      #     category: database
+      #     service: db-node
+      #   annotations:
+      #     summary: DB 메모리 85% 초과
+      #     description: DB node memory usage is over 85% for 5 minutes.
 
       # ==================================================
       # Maintenance Alerts
@@ -118,17 +191,6 @@ groups:
       #   annotations:
       #     summary: Nginx Down
       #     description: Nginx availability check requires nginx-exporter or blackbox-exporter.
-
-      # - alert: PostgresDown
-      #   expr: up{job="postgres"} == 0
-      #   for: 1m
-      #   labels:
-      #     severity: critical
-      #     category: database
-      #     service: postgres
-      #   annotations:
-      #     summary: PostgreSQL Down
-      #     description: PostgreSQL target is down.
 
       # - alert: HighLoginFailureRate
       #   expr: TODO_LOGIN_FAILURE_METRIC

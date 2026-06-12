@@ -43,6 +43,11 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     ports:
       - "3000:3000"
     depends_on:
@@ -58,6 +63,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./security-center:/usr/share/nginx/html/security-center:ro
     restart: unless-stopped
     networks:
       - monitoring
@@ -107,6 +113,8 @@ services:
     build:
       context: ./recovery
     container_name: lb-recovery
+    environment:
+      TZ: Asia/Seoul
     restart: unless-stopped
     volumes:
       - ./recovery/logs:/app/logs
@@ -116,18 +124,16 @@ services:
     networks:
       - monitoring
   
-  # ── 준한 추가 ──
-  tailscale-sd:   # Tailscale → Prometheus http_sd 헬퍼 (App 노드 디스커버리)
+  tailscale-sd:                    # Tailscale → Prometheus http_sd 헬퍼
     build: ./tailscale-sd
     environment:
       TS_API_KEY: ${TS_API_KEY}          # monitoring/.env (★gitignore)
       TS_TAILNET: ${TS_TAILNET:--}
-      EXPORTER_PORTS: "9100,9113,8080"
+      EXPORTER_PORTS: "9100,9113,8080,9187"
     restart: unless-stopped
     networks:
       - monitoring
  
-
 volumes:
   prometheus_data:
   alertmanager_data:

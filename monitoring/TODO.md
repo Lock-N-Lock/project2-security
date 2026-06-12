@@ -32,7 +32,7 @@
   - 목적: Alertmanager Webhook Timeout 방지
   - 방향: FastAPI BackgroundTasks 또는 Task Queue 구조 검토
 
-- [ ] 운영 컴포넌트 Self-Monitoring 한계 검토
+- [x] 운영 컴포넌트 Self-Monitoring 한계 검토
   - 출처: PR #19 Gemini Review
   - 대상: PrometheusDown, AlertmanagerDown
   - 방향: 외부 Health Check 또는 별도 Monitoring 계층 검토
@@ -73,10 +73,11 @@
   - 확인 필요: Login failure metric name, Rate limit metric name
   - 대상: HighLoginFailureRate, RateLimitTriggered
 
-- [ ] PostgresDown 정책 결정
-  - 현재 상태: DB 설치/구성 여부 미확인
-  - 후보: notify_only / Replica Promote / Failover
-  - #19 범위에서는 주석 보류
+- [ ] PostgresDown Remote Adapter 연동 후 활성화
+  - 현재 상태: DB Alert 구조 정리 완료
+  - 방향: PostgreSQL 프로세스 상태 기반 원격 복구 구조 검토
+  - 제외: Replica Promote / Failover
+  - 필요 작업: Remote Adapter 구현 및 통합 테스트
 
 - [ ] CloudWatch Alarm Dashboard 반영 범위 확정
 
@@ -108,14 +109,17 @@
   - Grafana 자동 로드 확인
   - Provisioned Dashboard 검증 완료
   - Event Timeline / Alert History
+  - Security Center iframe 연동 검증 완료
 
-- [ ] Recovery Metrics 구성
+- [x] Recovery Metrics 구성
   - 대상:
     - recovery_attempt_total
     - recovery_success_total
-    - recovery_failed_total
   - 필요 작업:
     - Recovery Controller 메트릭 노출
     - Prometheus Scrape 설정
     - Grafana Recovery 패널 연동 검증
+
+- [ ] CloudWatch Alarm Dashboard 반영 범위 확정
+  - 현재 상태: 후보 이벤트 및 연계 방향 정리 완료
 
