@@ -175,7 +175,9 @@ resource "aws_launch_template" "app" {
     # 2) 앱 컨테이너
     dnf install -y docker && systemctl enable --now docker
     docker pull ${var.app_image} || true
-    docker run -d --restart=always -p 80:8080 \
+    docker run -d --restart=always \
+      -p 80:8080 \
+      -p 8080:8080 \
       -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
       -e DB_HOST_REPLICA="${var.db_host_replica}" \
       -e DB_USER="${var.db_user}" \
@@ -183,9 +185,10 @@ resource "aws_launch_template" "app" {
       -e DB_NAME="${var.db_name}" \
       --name lockbank-app ${var.app_image}
 
-    # 3) (예시) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
-    # docker run -d --restart=always --net=host --name node-exporter \
-    #   quay.io/prometheus/node-exporter
+
+    # 3) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    docker run -d --restart=always --net=host --name node-exporter \
+      quay.io/prometheus/node-exporter
     USERDATA
   )
 
@@ -208,7 +211,7 @@ resource "aws_autoscaling_group" "blue" {
   vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.blue.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 90 # ← 이 줄 추가 (교체 인스턴스 부팅 여유, 데모용 90s)
+  health_check_grace_period = 300 # ← 이 줄 추가 (교체 인스턴스 부팅 여유, 데모용 300s)
 
   launch_template {
     id      = aws_launch_template.app.id
@@ -233,7 +236,7 @@ resource "aws_autoscaling_group" "green" {
   vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.green.arn]
   health_check_type         = "ELB"
-  health_check_grace_period = 90 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
+  health_check_grace_period = 300 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
   launch_template {
     id      = aws_launch_template.app.id
     version = "$Latest"

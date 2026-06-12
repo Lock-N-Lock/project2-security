@@ -59,8 +59,6 @@ locals {
   # cloudflare 리소스는 count=0(dns_provider≠cloudflare)이라 더미로 실제 API 호출 없음.
   # range(40)으로 길이를 코드가 보장 → 0 개수 오타 위험 제거.
   cloudflare_dummy_token = join("", [for _ in range(40) : "0"])
-  # (다른 간단 버전 코드) 
-  # cloudflare_dummy_token = format("%040d", 0)   # 0을 40자리 zero-pad = "0"×40
 }
 
 # Cloudflare provider — dns_provider="cloudflare" 일 때만 실제 사용

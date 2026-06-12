@@ -46,3 +46,22 @@ services:
         exec docker-entrypoint.sh postgres
     networks:
       - lb-net-replica
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: lb-db-node-exporter
+    restart: unless-stopped
+    network_mode: host
+    pid: host
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - --path.rootfs=/host
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: lb-db-postgres-exporter
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DATA_SOURCE_NAME: "postgresql://lb-user:lb-user@localhost:5432/lb-db?sslmode=disable"
