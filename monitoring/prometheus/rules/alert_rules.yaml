@@ -3,17 +3,93 @@ groups:
 
     rules:
       # ==================================================
+      # Application Alerts
+      # AWS App ASG 인스턴스 scrape 검증 후 활성화
+      #
+      # BankAppDown:
+      # - LockBank FastAPI /metrics endpoint 장애
+      # - app-nodes job의 8080 포트 scrape 상태로 검증
+      # - Alertmanager를 통해 Telegram 알림을 전송하고,
+      #   Recovery Controller가 복구를 시도한다.
+      #
+      # AppNodeExporterDown:
+      # - App 서버 node_exporter 장애
+      # - 서버 리소스 메트릭 수집 불가 상태를 탐지한다.
+      # - FastAPI 앱 장애와는 복구 대상이 다르므로 BankAppDown과 분리한다.
+      # ==================================================
+
+      - alert: BankAppDown
+        expr: up{job="app-nodes", instance=~".*:8080"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          category: service
+          service: lockbank-app
+        annotations:
+          summary: LockBank App Down
+          description: LockBank application target is down.
+
+      # - alert: AppNodeExporterDown
+      #   expr: up{job="app-nodes", instance=~".*:9100"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: app-node-exporter
+      #   annotations:
+      #     summary: App Node Exporter Down
+      #     description: App server node_exporter metrics endpoint is down.
+
+      # ==================================================
       # Database Alerts
       # DB 노드 / PostgreSQL Exporter scrape 검증 후 활성화
       #
-      # PostgresExporterDown:
-      # - postgres-exporter 자체 장애
-      # - exporter metrics endpoint 또는 Prometheus up 상태로 검증
-      #
       # PostgresDown:
-      # - PostgreSQL 프로세스 또는 컨테이너 장애
-      # - pg_up 또는 pg_isready 기반으로 검증
+      # - PostgreSQL 서비스 또는 PostgreSQL Exporter 기준 DB 상태 장애
+      # - DB 장애는 사용자 서비스 영향 가능성이 있으므로 critical로 분류한다.
       #
+      # PostgresExporterDown:
+      # - PostgreSQL Exporter 자체 장애
+      # - DB 장애와 구분하기 위해 exporter 장애로 분리한다.
+      # ==================================================
+
+      # - alert: PostgresDown
+      #   expr: pg_up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: critical
+      #     category: database
+      #     service: postgres
+      #   annotations:
+      #     summary: PostgreSQL Down
+      #     description: PostgreSQL database is not accepting connections.
+
+      # - alert: PostgresExporterDown
+      #   expr: up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: postgres-exporter
+      #   annotations:
+      #     summary: PostgreSQL Exporter Down
+      #     description: PostgreSQL exporter metrics endpoint is down.
+
+      # - alert: DBNodeExporterDown
+      #   expr: up{job="db-node", instance=~".*:9100"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: db-node-exporter
+      #   annotations:
+      #     summary: DB Node Exporter Down
+      #     description: DB server node_exporter metrics endpoint is down.
+
+      # ==================================================
+      # Database Alerts
+      # DB 노드 / PostgreSQL Exporter scrape 검증 후 활성화
+
       # DBHighCPU / DBHighMemory:
       # - db-node의 node_exporter 메트릭 수집 시 활성화
       #
@@ -25,28 +101,6 @@ groups:
       # - Failover
       # - DB 연결 정보 전환
       # ==================================================
-
-      # - alert: PostgresExporterDown
-      #   expr: up{job="db-node", instance=~".*:9187"} == 0
-      #   for: 30s
-      #   labels:
-      #     severity: warning
-      #     category: database
-      #     service: postgres-exporter
-      #   annotations:
-      #     summary: PostgreSQL Exporter Down
-      #     description: PostgreSQL exporter target is down.
-
-      # - alert: PostgresDown
-      #   expr: pg_up{job="db-node"} == 0
-      #   for: 30s
-      #   labels:
-      #     severity: critical
-      #     category: database
-      #     service: postgres
-      #   annotations:
-      #     summary: PostgreSQL Down
-      #     description: PostgreSQL exporter is reachable, but PostgreSQL is not responding.
 
       # - alert: DBHighCPU
       #   expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{job="db-node", mode="idle"}[5m])) * 100) > 85
@@ -164,17 +218,6 @@ groups:
       # 실제 scrape target / app metrics 확정 후 활성화
       # 헷갈리지 않도록 활성 Alert와 분리
       # ==================================================
-
-      # - alert: BankAppDown
-      #   expr: up{job="lockbank-app"} == 0
-      #   for: 30s
-      #   labels:
-      #     severity: critical
-      #     category: service
-      #     service: lockbank-app
-      #   annotations:
-      #     summary: LockBank App Down
-      #     description: LockBank application target is down.
 
       # - alert: NginxDown
       #   expr: up{job="nginx"} == 0

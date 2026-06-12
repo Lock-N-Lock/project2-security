@@ -57,7 +57,7 @@ BankAppDown:
 
   verify:
     type: http
-    url: "TODO_APP_HEALTH_URL"
+    url: "${APP_HEALTH_URL}"
     timeout: 5
 
   retry: 3

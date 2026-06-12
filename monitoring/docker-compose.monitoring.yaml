@@ -127,6 +127,9 @@ services:
     build:
       context: ./recovery
     container_name: lb-recovery
+    env_file:
+      - .env
+      - .env.generated
     environment:
       TZ: Asia/Seoul
     restart: unless-stopped
