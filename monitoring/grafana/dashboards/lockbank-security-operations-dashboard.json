@@ -37,7 +37,6 @@
             "uid": "PBFA97CFB590B2093"
           },
           "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: max(up{job=\"app-nodes\", instance=~\".*:8080\"})\nPurpose: 현재 활성 App metrics endpoint 상태 확인",
-          ,
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -128,8 +127,7 @@
               "color": {
                 "mode": "thresholds"
               },
-              "mappings":
-               [
+              "mappings": [
                 {
                   "options": {
                     "0": {
@@ -1377,9 +1375,9 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
+        "y": 5
       },
-      "id": 12,
+      "id": 38,
       "panels": [
         {
           "datasource": {
@@ -1417,10 +1415,10 @@
             "overrides": []
           },
           "gridPos": {
-            "h": 8,
-            "w": 12,
+            "h": 6,
+            "w": 24,
             "x": 0,
-            "y": 37
+            "y": 0
           },
           "id": 25,
           "options": {
@@ -1453,89 +1451,6 @@
           "title": "Container Status",
           "type": "table"
         },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nPostgreSQL exporter status.\n\nExpected metric:\nup{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 37
-          },
-          "id": 39,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "none",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "PostgreSQL Status",
-          "type": "stat"
-        }
-      ],
-      "title": "Infrastructure (Prometheus)",
-      "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
-      "id": 38,
-      "panels": [
         {
           "datasource": {
             "type": "cloudwatch",
@@ -1600,7 +1515,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 6
           },
           "id": 5,
           "options": {
@@ -1706,7 +1621,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 6
           },
           "id": 24,
           "options": {
@@ -1817,7 +1732,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 38
+            "y": 14
           },
           "id": 40,
           "options": {
@@ -1896,7 +1811,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 38
+            "y": 14
           },
           "id": 23,
           "options": {
@@ -1944,7 +1859,7 @@
           "type": "stat"
         }
       ],
-      "title": "Cloud Infrastructure (CloudWatch)",
+      "title": "Infrastructure",
       "type": "row"
     },
     {
@@ -2166,7 +2081,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{job=\"recovery-logs\"} |= \"ERROR\"",
+          "expr": "{job=\"critical-logs\"}",
           "queryType": "range",
           "refId": "A"
         }
