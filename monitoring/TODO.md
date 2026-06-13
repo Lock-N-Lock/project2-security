@@ -125,11 +125,47 @@
 
 ### 우선순위
 
-* [ ] B Track App 정보 확인 후 BankAppDown 정책 값 확정
+* [ ] BankAppDown End-to-End 검증
 
-  * App container name
-  * Health endpoint
-  * Prometheus job_name
+  검증 흐름:
+
+  * App Container 중지
+  * Prometheus Alert 발생
+  * Alertmanager 수신
+  * Recovery Controller 수신
+  * Recovery Action 실행
+  * Verify 성공 확인
+
+  확인 항목:
+
+  * Alert 상태
+  * Recovery Log
+  * Telegram Notification
+  * Dashboard 반영 여부
+
+  * [ ] Remote Adapter 구현
+
+  목적:
+
+  * AWS App / DB 대상 원격 Recovery 지원
+
+  대상:
+
+  * BankAppDown
+  * PostgresDown
+  * PostgresExporterDown
+
+  검토:
+
+  * SSH 기반 실행
+  * 인증 정보 관리 방식
+  * Verify 연계 방식
+
+  범위 제외:
+
+  * Failover
+  * Replica Promote
+  * Auto Scaling 제어
 
 * [ ] Security Alert Metric 이름 확정
 
@@ -193,6 +229,12 @@
 
 ### 완료
 
+* [x] B Track App 정보 확인 후 BankAppDown 정책 값 확정
+
+  * App container name
+  * Health endpoint
+  * Prometheus job_name
+
 * [x] Recovery Retry 정책 구현
 
   * recovery_map.yaml의 retry 값 사용
@@ -214,6 +256,17 @@
 ### 우선순위
 
 ### 확인 필요
+
+* [ ] Alert Inventory 최종 정리
+
+  포함 항목:
+
+  * Alert Name
+  * Severity
+  * Category
+  * Auto Recovery 여부
+  * Verify 방식
+  * Notification 여부
 
 * [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
 
@@ -254,6 +307,20 @@
 ## Dashboard / History
 
 ### 우선순위
+
+* [ ] Dashboard 데이터 소스 매핑 정리
+
+  정리 대상:
+
+  * Prometheus
+  * CloudWatch
+  * Loki
+
+  포함 내용:
+
+  * 수집 데이터
+  * 활용 목적
+  * Dashboard 패널 위치
 
 * [ ] Dashboard 시나리오 매핑 정리
 
