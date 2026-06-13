@@ -4,6 +4,12 @@
 
 ### 최우선
 
+* [] CloudWatch Datasource 인증 구성
+  - Grafana CloudWatch Dashboard 활성화
+  - CPU Usage
+  - ALB Target Health
+  - ASG Instance Count
+
 * [ ] Recovery Success 알림 구현
 
   대상:

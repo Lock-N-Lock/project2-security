@@ -36,7 +36,8 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - App job_name 확정 필요\nExpected metric: up{job=\"lockbank-app\"}",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: max(up{job=\"app-nodes\", instance=~\".*:8080\"})\nPurpose: 현재 활성 App metrics endpoint 상태 확인",
+          ,
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -106,14 +107,14 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"lockbank-app\"}",
+              "expr": "max(up{job=\"app-nodes\", instance=~\".*:8080\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "App Status",
+          "title": "LockBank App Metrics Status",
           "type": "stat"
         },
         {
@@ -121,13 +122,14 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - DB node/postgres-exporter scrape 검증 필요\nExpected metric: up{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: pg_up\nPurpose: PostgreSQL 연결 상태 확인",
           "fieldConfig": {
             "defaults": {
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
+              "mappings":
+               [
                 {
                   "options": {
                     "0": {
@@ -191,7 +193,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
+              "expr": "pg_up",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,

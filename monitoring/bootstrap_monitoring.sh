@@ -16,6 +16,31 @@ fi
 
 echo "[OK] .env 확인"
 
+required_vars=(
+    TS_API_KEY
+    TELEGRAM_BOT_TOKEN
+    TELEGRAM_CHAT_ID
+    AWS_ACCESS_KEY_ID
+    AWS_SECRET_ACCESS_KEY
+    AWS_DEFAULT_REGION
+    AWS_ALB_NAME
+    AWS_BLUE_TARGET_GROUP_NAME
+    AWS_GREEN_TARGET_GROUP_NAME
+    AWS_BLUE_ASG_NAME
+    AWS_GREEN_ASG_NAME
+)
+
+for var in "${required_vars[@]}"; do
+    value="$(grep -E "^${var}=" .env | cut -d '=' -f2- || true)"
+
+    if [ -z "$value" ]; then
+        echo "[ERROR] .env에 ${var} 값이 없습니다."
+        exit 1
+    fi
+done
+
+echo "[OK] .env 필수값 확인"
+
 APP_IP=$(tailscale status | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
 
 if [ -z "$APP_IP" ]; then
@@ -31,7 +56,9 @@ EOF
 
 echo "[OK] APP_HEALTH_URL=${APP_HEALTH_URL}"
 
-docker compose --env-file .env \
+docker compose \
+    --env-file .env \
+    --env-file .env.generated \
     -f docker-compose.monitoring.yaml \
     up -d
 
