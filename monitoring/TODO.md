@@ -125,6 +125,56 @@
 
 ### 우선순위
 
+* [ ] ASG 환경에서 Recovery Target 동적 식별 방식 검토
+
+  배경:
+
+  * BankAppDown 검증 중 App 컨테이너 중지 이후 ALB Health Check 실패 발생
+  * ASG가 기존 App 인스턴스를 Unhealthy로 판단하고 신규 인스턴스로 교체하는 동작 확인
+  * ASG 환경에서는 App 인스턴스가 고정 대상이 아니므로 Remote Adapter가 고정 Host 기준으로 동작하면 복구 대상이 사라질 수 있음
+
+  검토:
+
+  * Prometheus alert의 instance label 기반 대상 식별
+  * Tailscale Service Discovery 결과 기반 대상 식별
+  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
+  * ASG 인스턴스 교체와 Recovery Controller 컨테이너 복구의 역할 경계
+
+  비고:
+
+  * 2026-06-13 BankAppDown E2E 검증 중 확인
+  * #22 Nginx Security Layer 반영 후 최종 App 구조 기준으로 재검토
+
+  ---
+
+  동적 대상 식별까지 제대로 하면 최소 반나절~하루는 잡는 게 현실적. 
+  AWS Target Group/ASG 조회까지 넣으면 IAM 권한, AWS CLI 설정, 대상 선택 로직, 예외 처리까지 봐야 해서 더 걸릴 수 있음.
+
+* [ ] Recovery Verify Timing 정책 추가
+
+  배경:
+
+  * BankAppDown 검증 과정에서 Recovery Action 직후 Verify가 수행됨
+  * App 기동 전 Verify가 실행되어 False Negative 발생 가능
+
+  검토:
+
+  * verify_delay
+    - Action 실행 후 Verify 전 대기 시간
+
+  * retry_interval
+    - Verify 실패 후 다음 Retry 전 대기 시간
+
+  적용 대상:
+
+  * BankAppDown
+  * PostgresDown
+  * PostgresExporterDown
+
+  비고:
+
+  * 2026-06-13 E2E 검증 중 확인
+
 * [ ] BankAppDown End-to-End 검증
 
   검증 흐름:
@@ -383,3 +433,23 @@
 
   * recovery_attempt_total
   * recovery_success_total
+
+
+
+----
+
+* [x] BankAppDown Alert → Notification → Recovery 경로 검증
+
+  확인:
+
+  * Prometheus Alert 발생
+  * Alertmanager Route 동작
+  * Telegram Alert 수신
+  * Recovery Controller 수신
+  * Retry 동작
+  * Recovery Failure Notification 수신
+
+  확인된 이슈:
+
+  * AWS App 대상 Remote Adapter 미구현
+  * Verify 시점이 너무 빠름
