@@ -11,6 +11,7 @@ bootstrap:
 	bash ./bootstrap_monitoring.sh
 
 up:
+	@test -f .env.generated || (echo "[ERROR] .env.generated 파일이 없습니다. 먼저 make bootstrap 을 실행하세요."; exit 1)
 	$(COMPOSE) up -d
 
 down:

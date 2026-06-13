@@ -1,10 +1,9 @@
+import logging
 import os
 from typing import Any
 
 import requests
-from fastapi import FastAPI, HTTPException, Request
-
-import logging
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Request
 
 
 app = FastAPI(title="LockBank Telegram Notifier")
@@ -23,7 +22,10 @@ def health() -> dict[str, str]:
 
 
 @app.post("/alert")
-async def alert(request: Request) -> dict[str, Any]:
+async def alert(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
     payload = await request.json()
 
     logger.info("Alertmanager payload: %s", payload)
@@ -35,16 +37,19 @@ async def alert(request: Request) -> dict[str, Any]:
         )
 
     message = build_message(payload)
-    send_telegram_message(message)
+    background_tasks.add_task(send_telegram_message, message)
 
     return {
-        "status": "sent",
+        "status": "accepted",
         "alerts": len(payload.get("alerts", [])),
     }
 
 
 @app.post("/recovery-failed")
-async def recovery_failed(request: Request) -> dict[str, Any]:
+async def recovery_failed(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
     payload = await request.json()
 
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -54,10 +59,10 @@ async def recovery_failed(request: Request) -> dict[str, Any]:
         )
 
     message = build_recovery_failed_message(payload)
-    send_telegram_message(message)
+    background_tasks.add_task(send_telegram_message, message)
 
     return {
-        "status": "sent",
+        "status": "accepted",
         "alertname": payload.get("alertname", "UnknownAlert"),
     }
 
@@ -125,17 +130,15 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
 def send_telegram_message(message: str) -> None:
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
 
-    response = requests.post(
-        url,
-        json={
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": message,
-        },
-        timeout=10,
-    )
-
-    if not response.ok:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Telegram API error: {response.text}",
+    try:
+        response = requests.post(
+            url,
+            json={
+                "chat_id": TELEGRAM_CHAT_ID,
+                "text": message,
+            },
+            timeout=10,
         )
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.exception("Failed to send Telegram message: %s", exc)
