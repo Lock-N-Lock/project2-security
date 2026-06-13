@@ -18,16 +18,16 @@ groups:
       # - FastAPI 앱 장애와는 복구 대상이 다르므로 BankAppDown과 분리한다.
       # ==================================================
 
-      - alert: BankAppDown
-        expr: up{job="app-nodes", instance=~".*:8080"} == 0
-        for: 30s
-        labels:
-          severity: critical
-          category: service
-          service: lockbank-app
-        annotations:
-          summary: LockBank App Down
-          description: LockBank application target is down.
+      # - alert: BankAppDown
+      #   expr: up{job="app-nodes", instance=~".*:8080"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: critical
+      #     category: service
+      #     service: lockbank-app
+      #   annotations:
+      #     summary: LockBank App Down
+      #     description: LockBank application target is down.
 
       # - alert: AppNodeExporterDown
       #   expr: up{job="app-nodes", instance=~".*:9100"} == 0
