@@ -38,30 +38,32 @@
 # User Service Recovery
 # --------------------------------------------------
 
-# App 서비스 장애
-# 실제 Health Check URL은 B Track 완료 후 확정
-BankAppDown:
-  description: "LockBank application container is down"
+# # App 서비스 장애
+# BankAppDown:
+#   description: "LockBank FastAPI container is down"
 
-  category: user_service
-  notify: true
-  log: recovery.log
+#   category: user_service
+#   notify: true
+#   notify_success: true
+#   log: recovery.log
 
-  mode: auto_recovery
+#   mode: auto_recovery
 
-  action: restart_container
+#   action: restart_container
 
-  target: lockbank-app
+#   target: lb-fastapi
 
-  command: "bash ./actions/docker_restart.sh lockbank-app"
+#   command: "bash ./actions/docker_restart.sh lb-fastapi"
 
-  verify:
-    type: http
-    url: "TODO_APP_HEALTH_URL"
-    timeout: 5
+#   verify:
+#     type: http
+#     url: "${APP_HEALTH_URL}"
+#     timeout: 5
 
-  retry: 3
-  cooldown: 10
+#   retry: 3
+#   verify_delay: 10
+#   retry_interval: 10
+#   cooldown: 10
 
 
 # --------------------------------------------------
@@ -81,9 +83,14 @@ PrometheusDown:
 
   action: restart_container
 
-  target: lb-prometheus
+  target: lb-monitoring-prometheus
 
-  command: "bash ./actions/docker_restart.sh lb-prometheus"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-prometheus"
+
+  pre_verify:
+    type: http
+    url: "http://prometheus:9090/-/ready"
+    timeout: 5
 
   verify:
     type: http
@@ -91,7 +98,7 @@ PrometheusDown:
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # 운영 컴포넌트
@@ -107,9 +114,14 @@ GrafanaDown:
 
   action: restart_container
 
-  target: lb-grafana
+  target: lb-monitoring-grafana
 
-  command: "bash ./actions/docker_restart.sh lb-grafana"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-grafana"
+
+  pre_verify:
+    type: http
+    url: "http://grafana:3000/api/health"
+    timeout: 5
 
   verify:
     type: http
@@ -117,7 +129,7 @@ GrafanaDown:
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # 운영 컴포넌트
@@ -133,9 +145,14 @@ AlertmanagerDown:
 
   action: restart_container
 
-  target: lb-alertmanager
+  target: lb-monitoring-alertmanager
 
-  command: "bash ./actions/docker_restart.sh lb-alertmanager"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-alertmanager"
+
+  pre_verify:
+    type: http
+    url: "http://alertmanager:9093/-/ready"
+    timeout: 5
 
   verify:
     type: http
@@ -143,7 +160,7 @@ AlertmanagerDown:
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 NginxExporterDown:
   description: "Nginx Exporter service is down"
@@ -156,9 +173,14 @@ NginxExporterDown:
 
   action: restart_container
 
-  target: lb-nginx-exporter
+  target: lb-monitoring-nginx-exporter
 
-  command: "bash ./actions/docker_restart.sh lb-nginx-exporter"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-nginx-exporter"
+
+  pre_verify:
+    type: http
+    url: "http://nginx-exporter:9113/metrics"
+    timeout: 5
 
   verify:
     type: http
@@ -166,7 +188,7 @@ NginxExporterDown:
     timeout: 5
 
   retry: 3
-  cooldown: 10
+  cooldown: 300
 
 
 # --------------------------------------------------

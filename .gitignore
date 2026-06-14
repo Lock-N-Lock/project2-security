@@ -55,10 +55,9 @@ Thumbs.db
 # ============ 프로젝트별 ============
 # Recovery Controller
 monitoring/recovery/logs/*.log
-
-
 monitoring/recovery/logs/recovery_state.json
 monitoring/recovery/logs/recovery_state.tmp
+monitoring/.env.generated
 
 # Terraform remote backend config (local)
 infra/terraform/backend.hcl

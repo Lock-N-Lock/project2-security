@@ -36,7 +36,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - App job_name 확정 필요\nExpected metric: up{job=\"lockbank-app\"}",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: max(up{job=\"app-nodes\", instance=~\".*:8080\"})\nPurpose: 현재 활성 App metrics endpoint 상태 확인",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -84,7 +84,7 @@
           "id": 1,
           "options": {
             "colorMode": "background",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -106,14 +106,14 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"lockbank-app\"}",
+              "expr": "max(up{job=\"app-nodes\", instance=~\".*:8080\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "App Status",
+          "title": "LockBank App Metrics Status",
           "type": "stat"
         },
         {
@@ -121,7 +121,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - DB node/postgres-exporter scrape 검증 필요\nExpected metric: up{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: pg_up\nPurpose: PostgreSQL 연결 상태 확인",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -169,7 +169,7 @@
           "id": 15,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -191,7 +191,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
+              "expr": "pg_up",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -248,7 +248,7 @@
           "id": 16,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -314,7 +314,8 @@
                     "value": 80
                   }
                 ]
-              }
+              },
+              "decimals": 0
             },
             "overrides": []
           },
@@ -327,7 +328,7 @@
           "id": 17,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -349,7 +350,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "increase(recovery_success_total[24h])",
+              "expr": "sum(increase(recovery_success_total[24h]))",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -526,7 +527,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: E Track / B Track\n\nData Source: Prometheus\n\nLogin failure count over the last 5 minutes.\n\nExpected metric:\nlogin_fail_total",
+          "description": "Owner: E Track / B Track\n\nData Source: Prometheus\n\nLogin failure count over the last 5 minutes.\n\nExpected metric:\nlogin_failed_total",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -568,7 +569,7 @@
           "id": 3,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -590,7 +591,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "increase(login_fail_total[5m])",
+              "expr": "increase(login_failed_total[5m])",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -743,7 +744,7 @@
           "id": 19,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -892,7 +893,7 @@
           "id": 20,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1231,7 +1232,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nTransfer API request count over the last 5 minutes.\n\nExpected metric:\ntransfer_request_total",
+          "description": "Owner: B Track\n\nData Source: Prometheus\n\nTransfer API request count over the last 5 minutes.\n\nExpected metric:\ntransfer_requests_total",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1263,7 +1264,7 @@
           "id": 36,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1285,7 +1286,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "increase(transfer_request_total[5m])",
+              "expr": "increase(transfer_requests_total[5m])",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1332,7 +1333,7 @@
           "id": 37,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1374,171 +1375,16 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 4
-      },
-      "id": 12,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: D Track / B Track\n\nData Source: Prometheus\n\nService and exporter scrape status.\n\nUsed for Prometheus-based service/container health monitoring.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 37
-          },
-          "id": 25,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "up",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Container Status",
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nPostgreSQL exporter status.\n\nExpected metric:\nup{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 37
-          },
-          "id": 39,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "PostgreSQL Status",
-          "type": "stat"
-        }
-      ],
-      "title": "Infrastructure (Prometheus)",
-      "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
         "y": 5
       },
       "id": 38,
       "panels": [
         {
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "P034F075C744B399F"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: A Track\n\nData Source: CloudWatch\n\nEC2 CPU utilization.\n\nStatus: Pending - AWS apply / CloudWatch datasource connection required",
+          "description": "Owner: D Track\n\nData Source: Prometheus\n\nApp 노드의 Node Exporter 기반 CPU 사용률.\n\nStatus: Active",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1597,7 +1443,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 6
           },
           "id": 5,
           "options": {
@@ -1615,25 +1461,14 @@
           "targets": [
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "CPUUtilization",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "",
-              "queryMode": "Metrics",
-              "refId": "A",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Average"
+              "editorMode": "code",
+              "expr": "100 - ((avg by(instance) (rate(node_cpu_seconds_total{job=\"app-nodes\",instance=~\".*:9100\",mode=\"idle\"}[5m])) and on(instance) (up{job=\"app-nodes\",instance=~\".*:9100\"} == 1)) * 100)",
+              "legendFormat": "{{instance}}",
+              "range": true,
+              "refId": "A"
             }
           ],
           "title": "CPU Usage",
@@ -1641,10 +1476,10 @@
         },
         {
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "P034F075C744B399F"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: A Track\n\nData Source: CloudWatch\n\nALB Target Group healthy host count.",
+          "description": "Owner: D Track\n\nData Source: Prometheus\n\nApp 노드의 Node Exporter 기반 Network In/Out 트래픽.\n\nStatus: Active",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1703,7 +1538,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 6
           },
           "id": 24,
           "options": {
@@ -1721,48 +1556,25 @@
           "targets": [
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "NetworkIn",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "300",
-              "queryMode": "Metrics",
-              "refId": "A",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Sum"
+              "editorMode": "code",
+              "expr": "sum(rate(node_network_receive_bytes_total{job=\"app-nodes\",instance=~\".*:9100\",device!=\"lo\"}[5m]))",
+              "legendFormat": "Network In",
+              "range": true,
+              "refId": "A"
             },
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "hide": false,
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "NetworkOut",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "300",
-              "queryMode": "Metrics",
-              "refId": "B",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Sum"
+              "editorMode": "code",
+              "expr": "sum(rate(node_network_transmit_bytes_total{job=\"app-nodes\",instance=~\".*:9100\",device!=\"lo\"}[5m]))",
+              "legendFormat": "Network Out",
+              "range": true,
+              "refId": "B"
             }
           ],
           "title": "Network In/Out",
@@ -1814,12 +1626,12 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 38
+            "y": 14
           },
           "id": 40,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1893,12 +1705,12 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 38
+            "y": 14
           },
           "id": 23,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1941,7 +1753,7 @@
           "type": "stat"
         }
       ],
-      "title": "Cloud Infrastructure (CloudWatch)",
+      "title": "Infrastructure",
       "type": "row"
     },
     {
@@ -1968,6 +1780,7 @@
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -1994,7 +1807,7 @@
       "id": 6,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2016,7 +1829,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "increase(recovery_attempt_total[24h])",
+          "expr": "sum(increase(recovery_attempt_total[24h]))",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -2064,7 +1877,7 @@
       "id": 26,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2086,7 +1899,7 @@
             "uid": "PBFA97CFB590B2093"
           },
           "editorMode": "code",
-          "expr": "(\r\n  recovery_success_total\r\n  /\r\n  recovery_attempt_total\r\n) * 100",
+          "expr": "(\r\n  sum(increase(recovery_success_total[24h]))\r\n  /\r\n  clamp_min(sum(increase(recovery_attempt_total[24h])), 1)\r\n) * 100",
           "instant": false,
           "legendFormat": "__auto",
           "range": true,
@@ -2162,7 +1975,7 @@
             "uid": "P8E80F9AEF21F6940"
           },
           "editorMode": "code",
-          "expr": "{job=\"recovery-logs\"} |= \"ERROR\"",
+          "expr": "{job=\"critical-logs\"}",
           "queryType": "range",
           "refId": "A"
         }
@@ -2220,7 +2033,7 @@
       "id": 41,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2287,7 +2100,7 @@
       "id": 42,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2354,7 +2167,7 @@
       "id": 43,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2435,7 +2248,7 @@
       "id": 30,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2504,7 +2317,7 @@
       "id": 31,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
@@ -2587,7 +2400,7 @@
       "id": 7,
       "options": {
         "colorMode": "value",
-        "graphMode": "area",
+        "graphMode": "none",
         "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {

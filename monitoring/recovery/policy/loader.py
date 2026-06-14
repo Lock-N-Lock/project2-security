@@ -1,3 +1,4 @@
+import os
 import yaml
 from pathlib import Path
 
@@ -17,7 +18,21 @@ def load_policies(force_reload: bool = False):
 
     try:
         with open(POLICY_PATH, "r", encoding="utf-8") as f:
-            policies = yaml.safe_load(f) or {}
+            raw_policy = f.read()
+
+        policies = yaml.safe_load(raw_policy) or {}
+
+        # 재귀적으로 dict 내부 치환
+        def expand(obj):
+            if isinstance(obj, dict):
+                return {k: expand(v) for k, v in obj.items()}
+            if isinstance(obj, list):
+                return [expand(i) for i in obj]
+            if isinstance(obj, str):
+                return os.path.expandvars(obj)
+            return obj
+
+        policies = expand(policies)
 
         if not isinstance(policies, dict):
             write_critical_log(
@@ -43,6 +58,6 @@ def load_policies(force_reload: bool = False):
     return _policy_cache
 
 
-def get_policy(alertname: str):
-    policies = load_policies()
+def get_policy(alertname: str, force_reload: bool = False):
+    policies = load_policies(force_reload=force_reload)
     return policies.get(alertname)
