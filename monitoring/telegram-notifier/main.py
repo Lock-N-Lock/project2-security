@@ -106,10 +106,11 @@ def build_message(payload: dict[str, Any]) -> str:
     alerts = payload.get("alerts", [])
     grouped_alerts = len(alerts)
 
-    icon = "✅" if status == "RESOLVED" else "🚨"
+    is_resolved = status == "RESOLVED"
+    title = "✅ 장애 해제" if is_resolved else "🚨 장애 감지"
 
     lines = [
-        f"{icon} LockBank Alert",
+        title,
         "",
         f"Status: {status}",
         f"Grouped Alerts: {grouped_alerts}",
@@ -121,7 +122,7 @@ def build_message(payload: dict[str, Any]) -> str:
 
         alertname = labels.get("alertname", "UnknownAlert")
         severity = labels.get("severity", "unknown")
-        service = labels.get("service") or labels.get("job") or "unknown"
+        target = labels.get("service") or labels.get("job") or "unknown"
         instance = labels.get("instance", "unknown")
         summary = (
             annotations.get("summary")
@@ -132,11 +133,12 @@ def build_message(payload: dict[str, Any]) -> str:
         lines.extend(
             [
                 "",
-                f"[{index}] {alertname}",
-                f"- Severity: {severity}",
-                f"- Service: {service}",
-                f"- Instance: {instance}",
-                f"- Summary: {summary}",
+                f"[{index}] Alert: {alertname}",
+                f"Severity: {severity}",
+                f"Target: {target}",
+                f"Instance: {instance}",
+                "",
+                f"설명: {summary}",
             ]
         )
 
@@ -151,12 +153,14 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
 
     return "\n".join(
         [
-            "🚨 LockBank 복구 실패 알림",
+            "❌ 자동 복구 실패",
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
             f"Retry: {retry}",
-            f"Reason: {reason}",
+            "",
+            f"결과: {reason}",
+            "운영자 확인이 필요합니다.",
         ]
     )
 
@@ -167,12 +171,13 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
 
     return "\n".join(
         [
-            "✅ LockBank 복구 완료 알림",
+            "✅ 자동 복구 완료",
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
             f"Verify: {verify_url}",
-            "Result: Success",
+            "",
+            "결과: 서비스가 정상 상태로 복구되었습니다.",
         ]
     )
 
