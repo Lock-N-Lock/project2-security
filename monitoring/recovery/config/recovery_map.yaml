@@ -39,30 +39,31 @@
 # --------------------------------------------------
 
 # App 서비스 장애
-# BankAppDown:
-#   description: "LockBank application container is down"
+BankAppDown:
+  description: "LockBank FastAPI container is down"
 
-#   category: user_service
-#   notify: true
-#   log: recovery.log
+  category: user_service
+  notify: true
+  notify_success: true
+  log: recovery.log
 
-#   mode: auto_recovery
+  mode: auto_recovery
 
-#   action: restart_container
+  action: restart_container
 
-#   target: lockbank-app
+  target: lb-fastapi
 
-#   command: "bash ./actions/docker_restart.sh lockbank-app"
+  command: "bash ./actions/docker_restart.sh lb-fastapi"
 
-#   verify:
-#     type: http
-#     url: "${APP_HEALTH_URL}"
-#     timeout: 5
+  verify:
+    type: http
+    url: "${APP_HEALTH_URL}"
+    timeout: 5
 
-#   retry: 3
-#   verify_delay: 10
-#   retry_interval: 10
-#   cooldown: 10
+  retry: 3
+  verify_delay: 10
+  retry_interval: 10
+  cooldown: 10
 
 
 # --------------------------------------------------

@@ -30,6 +30,20 @@ async def alert(
 
     logger.info("Alertmanager payload: %s", payload)
 
+    status = payload.get("status", "").upper()
+
+    if status == "RESOLVED":
+        alerts = payload.get("alerts", [])
+
+        for alert in alerts:
+            alertname = alert.get("labels", {}).get("alertname")
+
+            if alertname in ["BankAppDown", "PostgresDown"]:
+                return {
+                    "status": "skipped",
+                    "reason": "resolved notification disabled",
+                }
+
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         raise HTTPException(
             status_code=500,
@@ -43,7 +57,6 @@ async def alert(
         "status": "accepted",
         "alerts": len(payload.get("alerts", [])),
     }
-
 
 @app.post("/recovery-failed")
 async def recovery_failed(
@@ -59,6 +72,27 @@ async def recovery_failed(
         )
 
     message = build_recovery_failed_message(payload)
+    background_tasks.add_task(send_telegram_message, message)
+
+    return {
+        "status": "accepted",
+        "alertname": payload.get("alertname", "UnknownAlert"),
+    }
+
+@app.post("/recovery-success")
+async def recovery_success(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    payload = await request.json()
+
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        raise HTTPException(
+            status_code=500,
+            detail="Telegram configuration is missing",
+        )
+
+    message = build_recovery_success_message(payload)
     background_tasks.add_task(send_telegram_message, message)
 
     return {
@@ -123,6 +157,22 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
             f"Target: {target}",
             f"Retry: {retry}",
             f"Reason: {reason}",
+        ]
+    )
+
+def build_recovery_success_message(payload: dict[str, Any]) -> str:
+    alertname = payload.get("alertname", "UnknownAlert")
+    target = payload.get("target", "unknown")
+    verify_url = payload.get("verify_url", "unknown")
+
+    return "\n".join(
+        [
+            "✅ LockBank 복구 완료 알림",
+            "",
+            f"Alert: {alertname}",
+            f"Target: {target}",
+            f"Verify: {verify_url}",
+            "Result: Success",
         ]
     )
 
