@@ -1,34 +1,15 @@
 # Monitoring TODO
 
+ ------------------------------------------------------------
+  ### 필수
+ ------------------------------------------------------------
+
 ## Notification
-
-### 최우선
-
 * [] CloudWatch Datasource 인증 구성
   - Grafana CloudWatch Dashboard 활성화
   - CPU Usage
   - ALB Target Health
   - ASG Instance Count
-
-* [ ] Recovery Success 알림 구현
-
-  대상:
-  - user_service category
-  - 예: BankAppDown
-
-  제외:
-  - maintenance category
-  - security category
-
-  메시지 예시:
-  - ✅ 복구 완료
-  - 은행 서비스 장애 (BankAppDown)
-  - 대상
-  - 시도 횟수
-  - 복구 결과
-
-  후속 개선:
-  - 복구 소요시간 표시
 
 * [ ] Telegram Message Template 정리
 
@@ -38,22 +19,6 @@
   * Grouped Alert 표시 방식
   * Severity / Service / Instance 포함 여부 확정
 
-* [ ] Alert Inventory 작성
-
-  * Alert
-  * Severity
-  * Auto Recovery 여부
-  * Verify 방식
-  * Dashboard 위치
-
-### 후순위
-
-* [ ] Alert Severity 기준 정리
-
-  * Critical
-  * Warning
-  * Info
-
 * [ ] Telegram 설정 가이드 작성
 
   * .env.example 제공
@@ -61,13 +26,279 @@
   * TELEGRAM_CHAT_ID
   * 개인 환경 적용 방법 문서화
 
-* [ ] Notification Channel 운영 정책 문서화
+---
 
-  * 개인 테스트 채널
-  * 팀 공용 채널
-  * 최종 시연 환경 적용 기준 정리
+## Recovery Hardening
 
-* [ ] CloudWatch Notification Channel 통합 검토
+* [ ] BankAppDown End-to-End 자동 검증
+
+  검증 흐름:
+
+  * Prometheus Alert 발생
+  * Alertmanager 수신
+  * Recovery Controller 수신
+  * Recovery Action 실행
+  * Verify 성공 확인
+  * Recovery Success Notification 확인
+
+  확인 항목:
+
+  * Alert 상태
+  * Recovery Log
+  * Telegram Notification
+  * Dashboard 반영 여부
+
+* [ ] AWS App Remote Adapter 구현
+
+  목적:
+
+  * AWS App 인스턴스 대상 원격 Recovery 지원
+
+  대상:
+
+  * BankAppDown
+
+  검토:
+
+  * SSH 기반 실행
+  * Tailscale 기반 실행
+  * 인증 정보 관리 방식
+  * Verify 연계 방식
+
+  고려 사항:
+
+  * ASG 환경에서 인스턴스 교체 가능
+  * 고정 Host 기반 접근 방식 검토 필요
+  * Recovery Controller와 ASG 역할 경계 정리 필요
+
+  비고:
+
+  * #22 Nginx Security Layer 최종 구조 기준 재검토
+  * BankAppDown 자동 복구 활성화 전 필요
+
+  범위 제외:
+
+  * Replica Promote
+  * Failover
+  * DB 연결 정보 전환
+
+---
+
+## Alert / Recovery Policy
+
+* [ ] Alert Severity 기준 정리
+
+  * Critical
+  * Warning
+  * Info
+
+* [ ] Alert Inventory 작성
+
+  포함 항목:
+
+  * Alert Name
+  * Severity
+  * Category
+  * Notification 여부
+  * Auto Recovery 여부
+  * Verify 방식
+  * Dashboard 위치
+
+  Security Alert:
+
+  * Login Failure Metric 이름 확정
+  * Rate Limit Metric 이름 확정
+
+
+---
+
+## Dashboard / History
+
+
+* [ ] Dashboard 데이터 소스 매핑 정리
+
+  정리 대상:
+
+  * Prometheus
+  * CloudWatch
+  * Loki
+
+  포함 내용:
+
+  * 수집 데이터
+  * 활용 목적
+  * Dashboard 패널 위치
+
+* [ ] Dashboard 시나리오 매핑 정리
+
+  * 로그인 공격
+  * API Flooding
+  * 트래픽 증가 / ASG
+  * App 장애
+  * DB 장애
+  * 안전 배포
+
+* [ ] Monitoring & Recovery Quick Guide 작성
+
+  포함 내용:
+
+  * Prometheus
+  * Alertmanager
+  * Telegram
+  * Recovery Controller
+  * Loki
+  * Grafana
+  * Auto Recovery vs Notify Only
+  * CloudWatch vs Prometheus
+  * Dashboard 섹션 설명
+  * 주요 Alert 설명
+  * Recovery Policy 구조
+  * Dashboard 데이터 소스 구성
+
+* [ ] CloudWatch Alarm Dashboard 반영 범위 정리
+
+  대상:
+
+  * ALB5xxHigh
+  * TargetGroupUnhealthy
+  * TargetGroupUnhealthyGreen
+  * ASGScaleOut
+
+  검토:
+
+  * Dashboard 표시 필요 여부
+  * 시연 시나리오 연관성
+  * CloudWatch 패널 구성 방식
+
+
+ ------------------------------------------------------------
+  ### 향후 개선 방향 / 확장 과제
+ ------------------------------------------------------------
+
+* [ ] Monitoring Component Health Check 강화
+
+  대상:
+
+  * Prometheus
+  * Alertmanager
+  * Grafana
+  * Recovery Controller
+
+  검토:
+
+  * Docker Health Check
+  * Host-level Watchdog
+  * Monitoring 계층 Self-Healing 보완
+
+* [ ] docker inspect 기반 조회 리팩토링
+
+  * 출처: PR #10 Review
+
+  비고:
+
+  * 현재 동작에는 문제 없음
+  * 코드 단순화 및 유지보수성 개선 목적
+
+* [ ] docker.sock 권한 제한
+
+  * docker-socket-proxy 검토
+  * 권한 최소화 검토
+
+
+ * [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
+
+  선행 조건:
+
+  * DB Remote Adapter 구현
+
+  확인 필요:
+
+  * DB container name
+  * PostgreSQL Exporter container name
+
+  Verify:
+
+  * PostgresDown → pg_isready
+  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
+
+  자동 복구 범위:
+
+  * PostgreSQL 프로세스 재시작
+  * PostgreSQL 컨테이너 재시작
+  * PostgreSQL Exporter 재시작
+
+  제외:
+
+  * Replica Promote
+  * Failover
+  * DB 연결 정보 전환
+
+  필요 작업:
+
+  * Recovery Policy 값 확정
+  * 통합 테스트
+
+  비고:
+
+  * 시간 여유 시 진행
+
+* [ ] DB Remote Adapter 구현
+
+  목적:
+
+  * PostgreSQL 및 PostgreSQL Exporter 대상 원격 Recovery 지원
+
+  대상:
+
+  * PostgresDown
+  * PostgresExporterDown
+
+  검토:
+
+  * SSH 기반 실행
+  * 인증 정보 관리 방식
+  * Verify 연계 방식
+
+  Verify:
+
+  * PostgresDown → pg_isready
+  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
+
+  자동 복구 범위:
+
+  * PostgreSQL 프로세스 재시작
+  * PostgreSQL 컨테이너 재시작
+  * PostgreSQL Exporter 재시작
+
+
+* [ ] Recovery Verify Timing 튜닝 및 검증
+
+배경:
+
+* BankAppDown 검증 과정에서 Recovery Action 직후 Verify가 수행됨
+* App 기동 전 Verify가 실행되어 False Negative 발생 가능
+* verify_delay / retry_interval 옵션 구현 완료
+
+검증 항목:
+
+* BankAppDown 기준 적정 verify_delay 값 확인
+* BankAppDown 기준 적정 retry_interval 값 확인
+* App 재기동 시간과 Verify 시점 비교
+* Recovery Success / Recovery Failure 오탐 여부 확인
+
+적용 대상:
+
+* BankAppDown
+* PostgresDown (향후 활성화 시)
+* PostgresExporterDown (향후 활성화 시)
+
+비고:
+
+* 2026-06-13 E2E 검증 중 확인
+* 현재 verify_delay=10, retry_interval=10 적용
+* #22 최종 구조 기준으로 재검증 필요
+
+* [ ] CloudWatch Notification Channel 통합 검토 (Optional)
 
   현재:
   - CloudWatch Alarm → SNS → Lambda → Telegram
@@ -85,53 +316,7 @@
   - 네트워크 구성
   - 장애 지점 증가 여부
 
-  우선순위: Low
-
-### 완료
-
-* [x] Notification Channel 운영 정책 정리
-
-  * maintenance Alert 정책 확정
-  * User Service Alert 정책 확정
-  * Security Alert 정책 확정
-  * Telegram 발송 기준 정리
-
-* [x] Alertmanager → Telegram Route 정리
-
-  * maintenance Alert → Telegram 제외
-  * Recovery Webhook 유지
-  * Route 검증
-
-* [x] Recovery 실패 알림 설계 및 구현
-
-  * Retry 3회 후 Verify 실패 시 알림
-  * Recovery Controller → telegram-notifier 호출 방식 채택
-  * telegram-notifier `/recovery-failed` API 추가
-  * API 단독 테스트 완료
-
-* [x] Telegram Bot 구성
-
-  * Bot 생성
-  * 운영 채널/그룹 생성
-  * Chat ID 확인
-
-* [x] Alertmanager → Telegram 연동
-
-  * 운영 컴포넌트 Alert 기준 테스트
-  * 대상:
-
-    * PrometheusDown
-    * AlertmanagerDown
-    * GrafanaDown
-    * NginxExporterDown
-
----
-
-## Recovery Hardening
-
-### 우선순위
-
-* [ ] ASG 환경에서 Recovery Target 동적 식별 방식 검토
+* [ ] ASG 환경 Recovery 대상 식별 방식 검토 (Optional)
 
   배경:
 
@@ -156,177 +341,42 @@
   동적 대상 식별까지 제대로 하면 최소 반나절~하루는 잡는 게 현실적. 
   AWS Target Group/ASG 조회까지 넣으면 IAM 권한, AWS CLI 설정, 대상 선택 로직, 예외 처리까지 봐야 해서 더 걸릴 수 있음.
 
-* [ ] Recovery Verify Timing 정책 추가
 
-  배경:
+ ------------------------------------------------------------
+  ### 완료
+ ------------------------------------------------------------
 
-  * BankAppDown 검증 과정에서 Recovery Action 직후 Verify가 수행됨
-  * App 기동 전 Verify가 실행되어 False Negative 발생 가능
+* [x] BankAppDown Alert → Notification → Recovery 경로 검증
 
-  검토:
+  확인:
 
-  * verify_delay
-    - Action 실행 후 Verify 전 대기 시간
-
-  * retry_interval
-    - Verify 실패 후 다음 Retry 전 대기 시간
-
-  적용 대상:
-
-  * BankAppDown
-  * PostgresDown
-  * PostgresExporterDown
-
-  비고:
-
-  * 2026-06-13 E2E 검증 중 확인
-
-* [ ] BankAppDown End-to-End 검증
-
-  검증 흐름:
-
-  * App Container 중지
   * Prometheus Alert 발생
-  * Alertmanager 수신
+  * Alertmanager Route 동작
+  * Telegram Alert 수신
   * Recovery Controller 수신
-  * Recovery Action 실행
-  * Verify 성공 확인
+  * Retry 동작
+  * Recovery Failure Notification 수신
 
-  확인 항목:
+  확인된 이슈:
 
-  * Alert 상태
-  * Recovery Log
-  * Telegram Notification
-  * Dashboard 반영 여부
+  * AWS App 대상 Remote Adapter 미구현
+  * Verify 시점이 너무 빠름
 
-  * [ ] Remote Adapter 구현
+* [x] Recovery 로그 조회 기반 구성
 
-  목적:
+* [x] Dashboard Panel 구성
 
-  * AWS App / DB 대상 원격 Recovery 지원
+  * Security
+  * Application
+  * Infrastructure
+  * Recovery
 
-  대상:
+* [x] Dashboard Provisioning 구성 및 검증
 
-  * BankAppDown
-  * PostgresDown
-  * PostgresExporterDown
+* [x] Recovery Metrics 구성
 
-  검토:
-
-  * SSH 기반 실행
-  * 인증 정보 관리 방식
-  * Verify 연계 방식
-
-  범위 제외:
-
-  * Failover
-  * Replica Promote
-  * Auto Scaling 제어
-
-* [ ] Security Alert Metric 이름 확정
-
-  * Login Failure Metric
-  * Rate Limit Metric
-
-* [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
-
-  확인 필요:
-
-  * DB container name
-  * PostgreSQL Exporter container name
-  * 원격 실행 방식(Remote Adapter)
-
-  Verify:
-
-  * PostgresDown → pg_isready
-  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
-
-  제외:
-
-  * Replica Promote
-  * Failover
-  * DB 연결 정보 전환
-
-  필요 작업:
-
-  * Recovery Policy 값 확정
-  * 통합 테스트
-
-### 개선사항 (Low)
-
-* [ ] Monitoring Component Health Check 강화
-
-  대상:
-
-  * Prometheus
-  * Alertmanager
-  * Grafana
-  * Recovery Controller
-
-  검토:
-
-  * Docker Health Check
-  * Host-level Watchdog
-  * Monitoring 계층 Self-Healing 보완
-
-* [ ] docker inspect 기반 조회 리팩토링
-
-  * 출처: PR #10 Review
-
-* [ ] docker.sock 권한 제한
-
-  * docker-socket-proxy 검토
-  * 권한 최소화 검토
-
-* [ ] CloudWatch Alarm Telegram 알림 연동
-
-  * CloudWatch Alarm → SNS → Lambda → Telegram
-  * 우선순위: 후순위
-
-### 완료
-
-* [x] B Track App 정보 확인 후 BankAppDown 정책 값 확정
-
-  * App container name
-  * Health endpoint
-  * Prometheus job_name
-
-* [x] Recovery Retry 정책 구현
-
-  * recovery_map.yaml의 retry 값 사용
-  * 중간 실패는 recovery.log 기록
-  * 최종 실패는 critical.log 기록
-  * 최종 실패 시 Recovery Failure Notification 호출
-
-* [x] recovery_map.yaml 캐싱 적용 검토
-* [x] recovery_map.yaml 로딩 예외 처리 개선
-* [x] 표준 Python logging 적용 검토
-* [x] Recovery Action 비동기 처리 검토
-* [x] 운영 컴포넌트 Self-Monitoring 한계 검토
-* [x] Recovery Lock / Cooldown 구현 및 강화
-
----
-
-## Alert / Recovery Policy
-
-### 우선순위
-
-### 확인 필요
-
-* [ ] Alert Inventory 최종 정리
-
-  포함 항목:
-
-  * Alert Name
-  * Severity
-  * Category
-  * Auto Recovery 여부
-  * Verify 방식
-  * Notification 여부
-
-* [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
-
-### 완료
+  * recovery_attempt_total
+  * recovery_success_total
 
 * [x] maintenance Alert 정책 최종 반영
 
@@ -358,104 +408,81 @@
 
 * [x] Loki / Promtail 기반 로그 수집 구성
 
----
 
-## Dashboard / History
+* [x] B Track App 정보 확인 후 BankAppDown 정책 값 확정
 
-### 우선순위
+  * App container name
+  * Health endpoint
+  * Prometheus job_name
 
-* [ ] Dashboard 데이터 소스 매핑 정리
+* [x] Recovery Retry 정책 구현
 
-  정리 대상:
+  * recovery_map.yaml의 retry 값 사용
+  * 중간 실패는 recovery.log 기록
+  * 최종 실패는 critical.log 기록
+  * 최종 실패 시 Recovery Failure Notification 호출
 
-  * Prometheus
-  * CloudWatch
-  * Loki
+* [x] recovery_map.yaml 캐싱 적용 검토
+* [x] recovery_map.yaml 로딩 예외 처리 개선
+* [x] 표준 Python logging 적용 검토
+* [x] Recovery Action 비동기 처리 검토
+* [x] 운영 컴포넌트 Self-Monitoring 한계 검토
+* [x] Recovery Lock / Cooldown 구현 및 강화
 
-  포함 내용:
-
-  * 수집 데이터
-  * 활용 목적
-  * Dashboard 패널 위치
-
-* [ ] Dashboard 시나리오 매핑 정리
-
-  * 로그인 공격
-  * API Flooding
-  * 트래픽 증가 / ASG
-  * App 장애
-  * DB 장애
-  * 안전 배포
-
-* [ ] Monitoring & Recovery Quick Guide 작성
-
-  포함 내용:
-
-  * Prometheus
-
-  * Alertmanager
-
-  * Telegram
-
-  * Recovery Controller
-
-  * Loki
-
-  * Grafana
-
-  * Auto Recovery vs Notify Only
-
-  * CloudWatch vs Prometheus
-
-  * Dashboard 섹션 설명
-
-  * 주요 Alert 설명
-
-### 후순위
-
-* [ ] CloudWatch Alarm Dashboard 반영 범위 확정
+* [x] Recovery Success 알림 구현
 
   대상:
+  - user_service category
+  - 예: BankAppDown
 
-  * ALB5xxHigh
-  * TargetGroupUnhealthy
-  * TargetGroupUnhealthyGreen
-  * ASGScaleOut
+  제외:
+  - maintenance category
+  - security category
 
-### 완료
+  메시지 예시:
+  - ✅ 복구 완료
+  - 은행 서비스 장애 (BankAppDown)
+  - 대상
+  - 시도 횟수
+  - 복구 결과
 
-* [x] Recovery 로그 조회 기반 구성
+  후속 개선:
+  - 복구 소요시간 표시
 
-* [x] Dashboard Panel 구성
+* [x] Notification Channel 운영 정책 정리
 
-  * Security
-  * Application
-  * Infrastructure
-  * Recovery
+* 개인 테스트 채널 구성
+* 팀 공용 채널 운영 기준 정리
+* 최종 시연 환경 적용 기준 정리
+* maintenance Alert 정책 확정
+* User Service Alert 정책 확정
+* Security Alert 정책 확정
+* Telegram 발송 기준 정리
+* [x] Alertmanager → Telegram Route 정리
 
-* [x] Dashboard Provisioning 구성 및 검증
+  * maintenance Alert → Telegram 제외
+  * Recovery Webhook 유지
+  * Route 검증
 
-* [x] Recovery Metrics 구성
+* [x] Recovery 실패 알림 설계 및 구현
 
-  * recovery_attempt_total
-  * recovery_success_total
+  * Retry 3회 후 Verify 실패 시 알림
+  * Recovery Controller → telegram-notifier 호출 방식 채택
+  * telegram-notifier `/recovery-failed` API 추가
+  * API 단독 테스트 완료
 
+* [x] Telegram Bot 구성
 
+  * Bot 생성
+  * 운영 채널/그룹 생성
+  * Chat ID 확인
 
-----
+* [x] Alertmanager → Telegram 연동
 
-* [x] BankAppDown Alert → Notification → Recovery 경로 검증
+  * 운영 컴포넌트 Alert 기준 테스트
+  * 대상:
 
-  확인:
-
-  * Prometheus Alert 발생
-  * Alertmanager Route 동작
-  * Telegram Alert 수신
-  * Recovery Controller 수신
-  * Retry 동작
-  * Recovery Failure Notification 수신
-
-  확인된 이슈:
-
-  * AWS App 대상 Remote Adapter 미구현
-  * Verify 시점이 너무 빠름
+    * PrometheusDown
+    * AlertmanagerDown
+    * GrafanaDown
+    * NginxExporterDown
