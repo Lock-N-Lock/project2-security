@@ -82,9 +82,9 @@ PrometheusDown:
 
   action: restart_container
 
-  target: lb-prometheus
+  target: lb-monitoring-prometheus
 
-  command: "bash ./actions/docker_restart.sh lb-prometheus"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-prometheus"
 
   pre_verify:
     type: http
@@ -113,9 +113,9 @@ GrafanaDown:
 
   action: restart_container
 
-  target: lb-grafana
+  target: lb-monitoring-grafana
 
-  command: "bash ./actions/docker_restart.sh lb-grafana"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-grafana"
 
   pre_verify:
     type: http
@@ -144,9 +144,9 @@ AlertmanagerDown:
 
   action: restart_container
 
-  target: lb-alertmanager
+  target: lb-monitoring-alertmanager
 
-  command: "bash ./actions/docker_restart.sh lb-alertmanager"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-alertmanager"
 
   pre_verify:
     type: http
@@ -172,9 +172,9 @@ NginxExporterDown:
 
   action: restart_container
 
-  target: lb-nginx-exporter
+  target: lb-monitoring-nginx-exporter
 
-  command: "bash ./actions/docker_restart.sh lb-nginx-exporter"
+  command: "bash ./actions/docker_restart.sh lb-monitoring-nginx-exporter"
 
   pre_verify:
     type: http
