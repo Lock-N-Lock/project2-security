@@ -48,7 +48,7 @@ if [ -z "$APP_IP" ]; then
     exit 1
 fi
 
-APP_HEALTH_URL="http://${APP_IP}:8080/health"
+APP_HEALTH_URL="${APP_HEALTH_URL:-http://${APP_IP}/health}"
 
 export AWS_ACCESS_KEY_ID="$(grep -E '^AWS_ACCESS_KEY_ID=' .env | head -1 | cut -d '=' -f2-)"
 export AWS_SECRET_ACCESS_KEY="$(grep -E '^AWS_SECRET_ACCESS_KEY=' .env | head -1 | cut -d '=' -f2-)"

@@ -77,8 +77,31 @@ def notify_recovery_failed(alertname, target, retry, reason):
             f"failed to notify recovery failure: {alertname}, error={e}"
         )
 
+def notify_recovery_success(alertname, target, verify_url):
+    try:
+        requests.post(
+            "http://telegram-notifier:8080/recovery-success",
+            json={
+                "alertname": alertname,
+                "target": target,
+                "verify_url": verify_url,
+            },
+            timeout=5,
+        )
+    except Exception as e:
+        write_critical_log(
+            f"failed to notify recovery success: {alertname}, error={e}"
+        )
 
-def run_recovery_task(lock_key, alertname, target, command, verify, retry):
+def run_recovery_task(
+    lock_key,
+    alertname,
+    target,
+    command,
+    verify,
+    retry,
+    notify_success=False,
+):
     verify = verify or {}
     target = target or "unknown"
 
@@ -123,7 +146,15 @@ def run_recovery_task(lock_key, alertname, target, command, verify, retry):
                         alertname=alertname,
                         target=target
                     ).inc()
+
                     write_recovery_log(f"verify success: {alertname}")
+
+                    if notify_success:
+                        notify_recovery_success(
+                            alertname,
+                            target,
+                            verify_url
+                        )
                     update_and_save_state(lock_key, time.time())
                     return
 
@@ -292,7 +323,8 @@ def webhook(payload: dict, background_tasks: BackgroundTasks):
         target,
         command,
         verify,
-        retry
+        retry,
+        policy.get("notify_success", False),
     )
 
     return {
