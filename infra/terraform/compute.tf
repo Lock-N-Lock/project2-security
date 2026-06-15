@@ -170,23 +170,18 @@ resource "aws_launch_template" "app" {
       --authkey=${tailscale_tailnet_key.app_join.key} \
       --accept-routes=false \
       --hostname="$HN" \
-      --ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
+      #--ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
 
-    # 2) 앱 컨테이너
-    dnf install -y docker && systemctl enable --now docker
-    docker pull ${var.app_image} || true
-    docker run -d --restart=always \
-      -p 80:8080 \
-      -p 8080:8080 \
-      -e DB_HOST_MAIN="${aws_instance.db.private_ip}" \
-      -e DB_HOST_REPLICA="${var.db_host_replica}" \
-      -e DB_USER="${var.db_user}" \
-      -e DB_PASSWORD="${var.db_password}" \
-      -e DB_NAME="${var.db_name}" \
-      --name lockbank-app ${var.app_image}
+    # 2) Docker Compose 배포 준비
+    dnf install -y docker
+    systemctl enable --now docker
+    usermod -aG docker ec2-user
 
+    mkdir -p /opt/lockbank/docker
+    chown -R ec2-user:ec2-user /opt/lockbank
 
     # 3) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
+    docker rm -f node-exporter || true
     docker run -d --restart=always --net=host --name node-exporter \
       quay.io/prometheus/node-exporter
     USERDATA

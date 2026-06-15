@@ -4,6 +4,13 @@ services:
   fastapi: # service 의 이름은 마음대로 지을 수 있다.
     image: ${DOCKER_USER:-lockandlock}/lock-app:latest # 빌드된 이미지 이름 설정
     container_name: lb-fastapi
+    environment:
+      - DB_HOST_MAIN=${DB_HOST_MAIN}
+      - DB_HOST_REPLICA=${DB_HOST_REPLICA}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - SECRET_KEY=${SECRET_KEY}
     # host의 port를 container의 port 로 연결하는 설정
     expose:
       - "8080"
@@ -13,7 +20,8 @@ services:
 
   security-nginx:
     build:
-      context: ./nginx
+      context: .
+      dockerfile: nginx/Dockerfile
     image: ${DOCKER_USER:-lockandlock}/lock-security-nginx:latest
     container_name: lb-security-nginx
     ports:
