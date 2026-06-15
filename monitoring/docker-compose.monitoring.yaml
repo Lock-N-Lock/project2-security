@@ -139,6 +139,8 @@ services:
     volumes:
       - ./recovery/logs:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock
+      # AWS Remote Adapter
+      - ../infra/terraform/lb-key.pem:/app/ssh/lb-key.pem:ro
     ports:
       - "8001:8000"
     networks:

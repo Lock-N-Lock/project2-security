@@ -30,57 +30,51 @@
 
 ## Recovery Hardening
 
-* [ ] BankAppDown End-to-End 자동 검증
+## Recovery Hardening
 
-  검증 흐름:
-
-  * Prometheus Alert 발생
-  * Alertmanager 수신
-  * Recovery Controller 수신
-  * Recovery Action 실행
-  * Verify 성공 확인
-  * Recovery Success Notification 확인
-
-  확인 항목:
-
-  * Alert 상태
-  * Recovery Log
-  * Telegram Notification
-  * Dashboard 반영 여부
-
-* [ ] AWS App Remote Adapter 구현
+* [ ] AWS App Remote Adapter MVP 구현
 
   목적:
-
   * AWS App 인스턴스 대상 원격 Recovery 지원
+  * BankAppDown 발생 시 App 컨테이너를 수동 재시작하지 않도록 자동화
+
+  MVP 범위:
+  * Tailscale status에서 online 상태의 lb-app-i-* 대상 자동 선택
+  * App 인스턴스에서 FastAPI 컨테이너 재시작
+  * 기존 APP_HEALTH_URL 기반 Verify 연계
+  * recovery.log / critical.log 기록 확인
 
   대상:
-
   * BankAppDown
 
-  검토:
-
-  * SSH 기반 실행
-  * Tailscale 기반 실행
-  * 인증 정보 관리 방식
-  * Verify 연계 방식
-
-  고려 사항:
-
-  * ASG 환경에서 인스턴스 교체 가능
-  * 고정 Host 기반 접근 방식 검토 필요
-  * Recovery Controller와 ASG 역할 경계 정리 필요
-
-  비고:
-
-  * #22 Nginx Security Layer 최종 구조 기준 재검토
-  * BankAppDown 자동 복구 활성화 전 필요
-
-  범위 제외:
-
+  제외:
+  * ASG 인스턴스 교체 제어
+  * Target Group 대상 직접 변경
+  * Blue-Green 전환
   * Replica Promote
   * Failover
   * DB 연결 정보 전환
+
+  후속 검토:
+  * Prometheus alert instance label 기반 대상 식별
+  * Tailscale Service Discovery 결과 기반 대상 식별
+  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
+  * Recovery Controller와 ASG 역할 경계 문서화
+
+* [ ] BankAppDown End-to-End 자동 검증
+
+  선행 조건:
+  * AWS App Remote Adapter MVP 구현
+
+  검증 흐름:
+  * FastAPI 컨테이너 중지
+  * Prometheus Alert 발생
+  * Alertmanager 수신
+  * Recovery Controller 수신
+  * AWS App Remote Adapter 실행
+  * FastAPI 컨테이너 재시작
+  * Verify 성공 확인
+  * Recovery Success Notification 확인
 
 ---
 

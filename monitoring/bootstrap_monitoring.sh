@@ -48,11 +48,11 @@ if [ -z "$APP_IP" ]; then
     exit 1
 fi
 
-APP_HEALTH_URL="${APP_HEALTH_URL:-http://${APP_IP}/health}"
+APP_HEALTH_URL="http://${APP_IP}/health"
 
-export AWS_ACCESS_KEY_ID="$(grep -E '^AWS_ACCESS_KEY_ID=' .env | head -1 | cut -d '=' -f2-)"
-export AWS_SECRET_ACCESS_KEY="$(grep -E '^AWS_SECRET_ACCESS_KEY=' .env | head -1 | cut -d '=' -f2-)"
-export AWS_DEFAULT_REGION="$(grep -E '^AWS_DEFAULT_REGION=' .env | head -1 | cut -d '=' -f2-)"
+export AWS_ACCESS_KEY_ID="$(awk -F= '$1=="AWS_ACCESS_KEY_ID"{print substr($0, index($0,$2)); exit}' .env)"
+export AWS_SECRET_ACCESS_KEY="$(awk -F= '$1=="AWS_SECRET_ACCESS_KEY"{print substr($0, index($0,$2)); exit}' .env)"
+export AWS_DEFAULT_REGION="$(awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env)"
 
 AWS_ALB_LOAD_BALANCER=$(
     aws elbv2 describe-load-balancers \
@@ -87,12 +87,28 @@ AWS_GREEN_ASG_NAME=$(
         --output text
 )
 
+AWS_APP_PRIVATE_IP=$(
+    aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=lb-app*" "Name=instance-state-name,Values=running" \
+        --query "Reservations[].Instances[].PrivateIpAddress | [0]" \
+        --output text
+)
+
+AWS_BASTION_PUBLIC_IP=$(
+    aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=lb-bastion*" "Name=instance-state-name,Values=running" \
+        --query "Reservations[].Instances[].PublicIpAddress | [0]" \
+        --output text
+)
+
 generated_vars=(
     AWS_ALB_LOAD_BALANCER
     AWS_BLUE_TARGET_GROUP
     AWS_GREEN_TARGET_GROUP
     AWS_BLUE_ASG_NAME
     AWS_GREEN_ASG_NAME
+    AWS_APP_PRIVATE_IP
+    AWS_BASTION_PUBLIC_IP
 )
 
 for var in "${generated_vars[@]}"; do
@@ -111,6 +127,9 @@ AWS_BLUE_TARGET_GROUP=${AWS_BLUE_TARGET_GROUP}
 AWS_GREEN_TARGET_GROUP=${AWS_GREEN_TARGET_GROUP}
 AWS_BLUE_ASG_NAME=${AWS_BLUE_ASG_NAME}
 AWS_GREEN_ASG_NAME=${AWS_GREEN_ASG_NAME}
+AWS_APP_PRIVATE_IP=${AWS_APP_PRIVATE_IP}
+AWS_BASTION_PUBLIC_IP=${AWS_BASTION_PUBLIC_IP}
+AWS_SSH_KEY_PATH=/app/ssh/lb-key.pem
 EOF
 
 echo "[OK] Generated .env.generated"
@@ -125,13 +144,32 @@ docker compose \
 echo "[OK] Monitoring Stack Started"
 
 echo ""
-echo "[INFO] Prometheus Targets"
+echo "============================================="
+echo " Auto Discovered Resources"
+echo "============================================="
 
-if command -v jq >/dev/null 2>&1; then
-    curl -s http://localhost:9090/api/v1/targets \
-    | jq -r '.data.activeTargets[] |
-    "[ " + .labels.job + " ] " + .labels.instance + " -> " + .health'
-else
-    echo "[WARN] jq가 없어 Target 요약 출력은 생략합니다."
-    echo "       수동 확인: http://localhost:9090/targets"
-fi
+echo "APP_HEALTH_URL      = ${APP_HEALTH_URL}"
+echo "APP_PRIVATE_IP      = ${AWS_APP_PRIVATE_IP}"
+echo "BASTION_PUBLIC_IP   = ${AWS_BASTION_PUBLIC_IP}"
+
+echo ""
+echo "ALB                 = ${AWS_ALB_LOAD_BALANCER}"
+echo "BLUE_TG             = ${AWS_BLUE_TARGET_GROUP}"
+echo "GREEN_TG            = ${AWS_GREEN_TARGET_GROUP}"
+
+echo ""
+echo "BLUE_ASG            = ${AWS_BLUE_ASG_NAME}"
+echo "GREEN_ASG           = ${AWS_GREEN_ASG_NAME}"
+
+echo ""
+echo "============================================="
+echo " Service Discovery"
+echo "============================================="
+
+curl -sf http://localhost:9999/app-targets >/dev/null \
+    && echo "[OK] app-targets" \
+    || echo "[FAIL] app-targets"
+
+curl -sf http://localhost:9999/db-targets >/dev/null \
+    && echo "[OK] db-targets" \
+    || echo "[FAIL] db-targets"
