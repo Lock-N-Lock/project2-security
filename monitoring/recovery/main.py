@@ -198,7 +198,7 @@ def run_recovery_task(
             alertname,
             target,
             retry,
-            "Recovery failed after retries"
+            "Service health verification failed after recovery action"
         )
         update_and_save_state(lock_key, time.time())
 

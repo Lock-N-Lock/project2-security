@@ -149,11 +149,14 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
     target = payload.get("target", "unknown")
     retry = payload.get("retry", "unknown")
-    reason = payload.get("reason", "Recovery failed after retries")
+    reason = payload.get(
+        "reason",
+        "Service health verification failed after recovery action"
+    )
 
     return "\n".join(
         [
-            "❌ 자동 복구 실패",
+            "❌ 자동 복구 검증 실패",
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
