@@ -4,12 +4,52 @@
   ### 필수
  ------------------------------------------------------------
 
-## Notification
-* [] CloudWatch Datasource 인증 구성
-  - Grafana CloudWatch Dashboard 활성화
-  - CPU Usage
-  - ALB Target Health
-  - ASG Instance Count
+* [ ] CloudWatch Alarm Event History 구성
+
+  목적:
+
+  * AWS 인프라 이벤트를 운영 이력으로 관리
+  * Dashboard 및 Event History 영역과 연계
+
+  대상:
+
+  * lb-alb-5xx
+  * lb-tg-unhealthy
+  * lb-tg-unhealthy-green
+  * ASG 관련 이벤트
+
+  검토:
+
+  * Lambda 기반 Event Log 생성
+  * Loki 연동 여부
+  * Grafana Event History 패널 구성
+  * Telegram 알림과 Dashboard 이력 연계
+
+  기대 효과:
+
+  * 탐지 → 알림 → 대응 흐름 추적
+  * 운영 이력 관리
+  * 시연 시 이벤트 발생 기록 확인 가능
+
+  예상 소요:
+
+  * MVP 기준 3~5시간
+  * Loki 연계 및 Dashboard 구성 포함 시 반나절~1일
+  
+
+* [ ] CloudWatch Dashboard 최종 검증
+
+  대상:
+
+  * CPU Usage
+  * ALB Target Health
+  * ASG Instance Count
+
+  확인 사항:
+
+  * Grafana 패널 정상 조회
+  * CloudWatch Dimension 자동화 검증
+  * 시연 시나리오 반영 여부 확인
 
 * [ ] Telegram Message Template 정리
 
@@ -18,67 +58,6 @@
   * Status 표시 방식
   * Grouped Alert 표시 방식
   * Severity / Service / Instance 포함 여부 확정
-
-* [ ] Telegram 설정 가이드 작성
-
-  * .env.example 제공
-  * TELEGRAM_BOT_TOKEN
-  * TELEGRAM_CHAT_ID
-  * 개인 환경 적용 방법 문서화
-
----
-
-## Recovery Hardening
-
-## Recovery Hardening
-
-* [ ] AWS App Remote Adapter MVP 구현
-
-  목적:
-  * AWS App 인스턴스 대상 원격 Recovery 지원
-  * BankAppDown 발생 시 App 컨테이너를 수동 재시작하지 않도록 자동화
-
-  MVP 범위:
-  * Tailscale status에서 online 상태의 lb-app-i-* 대상 자동 선택
-  * App 인스턴스에서 FastAPI 컨테이너 재시작
-  * 기존 APP_HEALTH_URL 기반 Verify 연계
-  * recovery.log / critical.log 기록 확인
-
-  대상:
-  * BankAppDown
-
-  제외:
-  * ASG 인스턴스 교체 제어
-  * Target Group 대상 직접 변경
-  * Blue-Green 전환
-  * Replica Promote
-  * Failover
-  * DB 연결 정보 전환
-
-  후속 검토:
-  * Prometheus alert instance label 기반 대상 식별
-  * Tailscale Service Discovery 결과 기반 대상 식별
-  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
-  * Recovery Controller와 ASG 역할 경계 문서화
-
-* [ ] BankAppDown End-to-End 자동 검증
-
-  선행 조건:
-  * AWS App Remote Adapter MVP 구현
-
-  검증 흐름:
-  * FastAPI 컨테이너 중지
-  * Prometheus Alert 발생
-  * Alertmanager 수신
-  * Recovery Controller 수신
-  * AWS App Remote Adapter 실행
-  * FastAPI 컨테이너 재시작
-  * Verify 성공 확인
-  * Recovery Success Notification 확인
-
----
-
-## Alert / Recovery Policy
 
 * [ ] Alert Severity 기준 정리
 
@@ -103,12 +82,6 @@
   * Login Failure Metric 이름 확정
   * Rate Limit Metric 이름 확정
 
-
----
-
-## Dashboard / History
-
-
 * [ ] Dashboard 데이터 소스 매핑 정리
 
   정리 대상:
@@ -131,6 +104,7 @@
   * App 장애
   * DB 장애
   * 안전 배포
+  * App 장애 시나리오 최종 정리
 
 * [ ] Monitoring & Recovery Quick Guide 작성
 
@@ -153,192 +127,35 @@
 
   대상:
 
-  * ALB5xxHigh
-  * TargetGroupUnhealthy
-  * TargetGroupUnhealthyGreen
-  * ASGScaleOut
+  * lb-alb-5xx
+  * llb-tg-unhealthy
+  * llb-tg-unhealthy-green
+  * lTargetTracking Alarm
 
   검토:
 
   * Dashboard 표시 필요 여부
   * 시연 시나리오 연관성
   * CloudWatch 패널 구성 방식
-
-
- ------------------------------------------------------------
-  ### 향후 개선 방향 / 확장 과제
- ------------------------------------------------------------
-
-* [ ] Monitoring Component Health Check 강화
-
-  대상:
-
-  * Prometheus
-  * Alertmanager
-  * Grafana
-  * Recovery Controller
-
-  검토:
-
-  * Docker Health Check
-  * Host-level Watchdog
-  * Monitoring 계층 Self-Healing 보완
-
-* [ ] docker inspect 기반 조회 리팩토링
-
-  * 출처: PR #10 Review
-
-  비고:
-
-  * 현재 동작에는 문제 없음
-  * 코드 단순화 및 유지보수성 개선 목적
-
-* [ ] docker.sock 권한 제한
-
-  * docker-socket-proxy 검토
-  * 권한 최소화 검토
-
-
- * [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
-
-  선행 조건:
-
-  * DB Remote Adapter 구현
-
-  확인 필요:
-
-  * DB container name
-  * PostgreSQL Exporter container name
-
-  Verify:
-
-  * PostgresDown → pg_isready
-  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
-
-  자동 복구 범위:
-
-  * PostgreSQL 프로세스 재시작
-  * PostgreSQL 컨테이너 재시작
-  * PostgreSQL Exporter 재시작
-
-  제외:
-
-  * Replica Promote
-  * Failover
-  * DB 연결 정보 전환
-
-  필요 작업:
-
-  * Recovery Policy 값 확정
-  * 통합 테스트
-
-  비고:
-
-  * 시간 여유 시 진행
-
-* [ ] DB Remote Adapter 구현
-
-  목적:
-
-  * PostgreSQL 및 PostgreSQL Exporter 대상 원격 Recovery 지원
-
-  대상:
-
-  * PostgresDown
-  * PostgresExporterDown
-
-  검토:
-
-  * SSH 기반 실행
-  * 인증 정보 관리 방식
-  * Verify 연계 방식
-
-  Verify:
-
-  * PostgresDown → pg_isready
-  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
-
-  자동 복구 범위:
-
-  * PostgreSQL 프로세스 재시작
-  * PostgreSQL 컨테이너 재시작
-  * PostgreSQL Exporter 재시작
-
-
-* [ ] Recovery Verify Timing 튜닝 및 검증
-
-배경:
-
-* BankAppDown 검증 과정에서 Recovery Action 직후 Verify가 수행됨
-* App 기동 전 Verify가 실행되어 False Negative 발생 가능
-* verify_delay / retry_interval 옵션 구현 완료
-
-검증 항목:
-
-* BankAppDown 기준 적정 verify_delay 값 확인
-* BankAppDown 기준 적정 retry_interval 값 확인
-* App 재기동 시간과 Verify 시점 비교
-* Recovery Success / Recovery Failure 오탐 여부 확인
-
-적용 대상:
-
-* BankAppDown
-* PostgresDown (향후 활성화 시)
-* PostgresExporterDown (향후 활성화 시)
-
-비고:
-
-* 2026-06-13 E2E 검증 중 확인
-* 현재 verify_delay=10, retry_interval=10 적용
-* #22 최종 구조 기준으로 재검증 필요
-
-* [ ] CloudWatch Notification Channel 통합 검토 (Optional)
-
-  현재:
-  - CloudWatch Alarm → SNS → Lambda → Telegram
-
-  향후 검토:
-  - CloudWatch Alarm → SNS → Lambda → telegram-notifier → Telegram
-
-  기대 효과:
-  - Telegram 메시지 템플릿 통일
-  - Bot Token 관리 일원화
-  - Notification 로직 통합
-
-  검토 사항:
-  - Lambda → on-mgmt 접근 방식
-  - 네트워크 구성
-  - 장애 지점 증가 여부
-
-* [ ] ASG 환경 Recovery 대상 식별 방식 검토 (Optional)
-
-  배경:
-
-  * BankAppDown 검증 중 App 컨테이너 중지 이후 ALB Health Check 실패 발생
-  * ASG가 기존 App 인스턴스를 Unhealthy로 판단하고 신규 인스턴스로 교체하는 동작 확인
-  * ASG 환경에서는 App 인스턴스가 고정 대상이 아니므로 Remote Adapter가 고정 Host 기준으로 동작하면 복구 대상이 사라질 수 있음
-
-  검토:
-
-  * Prometheus alert의 instance label 기반 대상 식별
-  * Tailscale Service Discovery 결과 기반 대상 식별
-  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
-  * ASG 인스턴스 교체와 Recovery Controller 컨테이너 복구의 역할 경계
-
-  비고:
-
-  * 2026-06-13 BankAppDown E2E 검증 중 확인
-  * #22 Nginx Security Layer 반영 후 최종 App 구조 기준으로 재검토
-
-  ---
-
-  동적 대상 식별까지 제대로 하면 최소 반나절~하루는 잡는 게 현실적. 
-  AWS Target Group/ASG 조회까지 넣으면 IAM 권한, AWS CLI 설정, 대상 선택 로직, 예외 처리까지 봐야 해서 더 걸릴 수 있음.
-
+  * Telegram 알림 연계 여부
+  * ASG Alarm 활용 여부
 
  ------------------------------------------------------------
   ### 완료
  ------------------------------------------------------------
+
+* [x] Telegram 설정 가이드 작성 
+
+  * .env.example 제공
+  * TELEGRAM_BOT_TOKEN
+  * TELEGRAM_CHAT_ID
+  * 개인 환경 적용 방법 문서화
+
+  >>> .env.example 제공
+  make bootstrap 자동 구성
+  Lambda 자동 배포
+  Service Discovery 자동 검증
+
 
 * [x] BankAppDown Alert → Notification → Recovery 경로 검증
 
@@ -480,3 +297,222 @@
     * AlertmanagerDown
     * GrafanaDown
     * NginxExporterDown
+
+
+ ------------------------------------------------------------
+  ### 보류
+ ------------------------------------------------------------
+
+<!-- 
+## Recovery Hardening
+
+* [ ] AWS App Remote Adapter MVP 구현
+
+  목적:
+  * AWS App 인스턴스 대상 원격 Recovery 지원
+  * BankAppDown 발생 시 App 컨테이너를 수동 재시작하지 않도록 자동화
+
+  MVP 범위:
+  * Tailscale status에서 online 상태의 lb-app-i-* 대상 자동 선택
+  * App 인스턴스에서 FastAPI 컨테이너 재시작
+  * 기존 APP_HEALTH_URL 기반 Verify 연계
+  * recovery.log / critical.log 기록 확인
+
+  대상:
+  * BankAppDown
+
+  제외:
+  * ASG 인스턴스 교체 제어
+  * Target Group 대상 직접 변경
+  * Blue-Green 전환
+  * Replica Promote
+  * Failover
+  * DB 연결 정보 전환
+
+  후속 검토:
+  * Prometheus alert instance label 기반 대상 식별
+  * Tailscale Service Discovery 결과 기반 대상 식별
+  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
+  * Recovery Controller와 ASG 역할 경계 문서화
+
+* [ ] BankAppDown End-to-End 자동 검증
+
+  선행 조건:
+  * AWS App Remote Adapter MVP 구현
+
+  검증 흐름:
+  * FastAPI 컨테이너 중지
+  * Prometheus Alert 발생
+  * Alertmanager 수신
+  * Recovery Controller 수신
+  * AWS App Remote Adapter 실행
+  * FastAPI 컨테이너 재시작
+  * Verify 성공 확인
+  * Recovery Success Notification 확인
+
+   * [ ] PostgresDown / PostgresExporterDown Recovery Policy 활성화
+
+  선행 조건:
+
+  * DB Remote Adapter 구현
+
+  확인 필요:
+
+  * DB container name
+  * PostgreSQL Exporter container name
+
+  Verify:
+
+  * PostgresDown → pg_isready
+  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
+
+  자동 복구 범위:
+
+  * PostgreSQL 프로세스 재시작
+  * PostgreSQL 컨테이너 재시작
+  * PostgreSQL Exporter 재시작
+
+  제외:
+
+  * Replica Promote
+  * Failover
+  * DB 연결 정보 전환
+
+  필요 작업:
+
+  * Recovery Policy 값 확정
+  * 통합 테스트
+
+  비고:
+
+  * 시간 여유 시 진행
+
+* [ ] DB Remote Adapter 구현
+
+  목적:
+
+  * PostgreSQL 및 PostgreSQL Exporter 대상 원격 Recovery 지원
+
+  대상:
+
+  * PostgresDown
+  * PostgresExporterDown
+
+  검토:
+
+  * SSH 기반 실행
+  * 인증 정보 관리 방식
+  * Verify 연계 방식
+
+  Verify:
+
+  * PostgresDown → pg_isready
+  * PostgresExporterDown → metrics endpoint 또는 Prometheus up
+
+  자동 복구 범위:
+
+  * PostgreSQL 프로세스 재시작
+  * PostgreSQL 컨테이너 재시작
+  * PostgreSQL Exporter 재시작
+
+
+* [ ] Recovery Verify Timing 튜닝 및 검증
+
+배경:
+
+* BankAppDown 검증 과정에서 Recovery Action 직후 Verify가 수행됨
+* App 기동 전 Verify가 실행되어 False Negative 발생 가능
+* verify_delay / retry_interval 옵션 구현 완료
+
+검증 항목:
+
+* BankAppDown 기준 적정 verify_delay 값 확인
+* BankAppDown 기준 적정 retry_interval 값 확인
+* App 재기동 시간과 Verify 시점 비교
+* Recovery Success / Recovery Failure 오탐 여부 확인
+
+적용 대상:
+
+* BankAppDown
+* PostgresDown (향후 활성화 시)
+* PostgresExporterDown (향후 활성화 시)
+
+비고:
+
+* 2026-06-13 E2E 검증 중 확인
+* 현재 verify_delay=10, retry_interval=10 적용
+* #22 최종 구조 기준으로 재검증 필요
+
+* [ ] CloudWatch Notification Channel 통합 검토 (Optional)
+
+  현재:
+  - CloudWatch Alarm → SNS → Lambda → Telegram
+
+  향후 검토:
+  - CloudWatch Alarm → SNS → Lambda → telegram-notifier → Telegram
+
+  기대 효과:
+  - Telegram 메시지 템플릿 통일
+  - Bot Token 관리 일원화
+  - Notification 로직 통합
+
+  검토 사항:
+  - Lambda → on-mgmt 접근 방식
+  - 네트워크 구성
+  - 장애 지점 증가 여부
+
+* [ ] ASG 환경 Recovery 대상 식별 방식 검토 (Optional)
+
+  배경:
+
+  * BankAppDown 검증 중 App 컨테이너 중지 이후 ALB Health Check 실패 발생
+  * ASG가 기존 App 인스턴스를 Unhealthy로 판단하고 신규 인스턴스로 교체하는 동작 확인
+  * ASG 환경에서는 App 인스턴스가 고정 대상이 아니므로 Remote Adapter가 고정 Host 기준으로 동작하면 복구 대상이 사라질 수 있음
+
+  검토:
+
+  * Prometheus alert의 instance label 기반 대상 식별
+  * Tailscale Service Discovery 결과 기반 대상 식별
+  * AWS Target Group / ASG 인스턴스 목록 기반 대상 재조회
+  * ASG 인스턴스 교체와 Recovery Controller 컨테이너 복구의 역할 경계
+
+  비고:
+
+  * 2026-06-13 BankAppDown E2E 검증 중 확인
+  * #22 Nginx Security Layer 반영 후 최종 App 구조 기준으로 재검토
+
+  ---
+
+  동적 대상 식별까지 제대로 하면 최소 반나절~하루는 잡는 게 현실적. 
+  AWS Target Group/ASG 조회까지 넣으면 IAM 권한, AWS CLI 설정, 대상 선택 로직, 예외 처리까지 봐야 해서 더 걸릴 수 있음.
+
+
+* [ ] Monitoring Component Health Check 강화
+
+  대상:
+
+  * Prometheus
+  * Alertmanager
+  * Grafana
+  * Recovery Controller
+
+  검토:
+
+  * Docker Health Check
+  * Host-level Watchdog
+  * Monitoring 계층 Self-Healing 보완
+
+* [ ] docker inspect 기반 조회 리팩토링
+
+  * 출처: PR #10 Review
+
+  비고:
+
+  * 현재 동작에는 문제 없음
+  * 코드 단순화 및 유지보수성 개선 목적
+
+* [ ] docker.sock 권한 제한
+
+  * docker-socket-proxy 검토
+  * 권한 최소화 검토
+
