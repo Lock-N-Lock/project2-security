@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MONITORING_DIR="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 ENV_FILE="${MONITORING_DIR}/.env"
+GENERATED_ENV_FILE="${MONITORING_DIR}/.env.generated"
 
 FUNCTION_NAME="lb-cloudwatch-telegram-notifier"
 ROLE_NAME="lb-cloudwatch-telegram-lambda-role"
@@ -43,6 +44,9 @@ prompt_env_if_empty "TELEGRAM_CHAT_ID" "" true
 
 set -a
 source "${ENV_FILE}"
+if [ -f "${GENERATED_ENV_FILE}" ]; then
+  source "${GENERATED_ENV_FILE}"
+fi
 set +a
 
 TOPIC_NAME="${SNS_TOPIC_NAME:-lb-alerts}"
@@ -174,6 +178,41 @@ if [ "${SUB_EXISTS}" = "None" ] || [ -z "${SUB_EXISTS}" ]; then
     --region "${REGION}" >/dev/null
 else
   echo "[OK] SNS subscription already exists."
+fi
+
+if [ "${ASG_SCALE_ALARM_ENABLED:-true}" = "true" ]; then
+  : "${AWS_BLUE_ASG_NAME:?AWS_BLUE_ASG_NAME is required}"
+
+  ASG_SCALE_ALARM_NAME="${AWS_BLUE_ASG_NAME}-scaleout-detected"
+
+  echo "[INFO] Creating/Updating ASG Scale CloudWatch Alarm: ${ASG_SCALE_ALARM_NAME}"
+
+  echo "[INFO] Enabling ASG group metrics collection: ${AWS_BLUE_ASG_NAME}"
+
+  aws autoscaling enable-metrics-collection \
+    --region "${REGION}" \
+    --auto-scaling-group-name "${AWS_BLUE_ASG_NAME}" \
+    --granularity "1Minute" \
+    --metrics GroupDesiredCapacity GroupInServiceInstances GroupTotalInstances
+
+  echo "[OK] ASG group metrics collection enabled"
+
+  aws cloudwatch put-metric-alarm \
+    --region "${REGION}" \
+    --alarm-name "${ASG_SCALE_ALARM_NAME}" \
+    --namespace AWS/AutoScaling \
+    --metric-name GroupInServiceInstances \
+    --dimensions Name=AutoScalingGroupName,Value="${AWS_BLUE_ASG_NAME}" \
+    --statistic Average \
+    --period "${ASG_SCALE_ALARM_PERIOD:-300}" \
+    --evaluation-periods "${ASG_SCALE_ALARM_EVALUATION_PERIODS:-1}" \
+    --threshold "${ASG_SCALE_ALARM_THRESHOLD:-2}" \
+    --comparison-operator GreaterThanOrEqualToThreshold \
+    --alarm-actions "${TOPIC_ARN}" \
+    --ok-actions "${TOPIC_ARN}" \
+    --treat-missing-data notBreaching
+
+  echo "[OK] ASG Scale alarm configured: ${ASG_SCALE_ALARM_NAME}"
 fi
 
 echo "[OK] CloudWatch Alarm -> SNS -> Lambda -> Telegram deployment completed."
