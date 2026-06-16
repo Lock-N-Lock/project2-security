@@ -149,6 +149,7 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
     target = payload.get("target", "unknown")
     retry = payload.get("retry", "unknown")
+    failure_stage = payload.get("failure_stage", "unknown")
     reason = payload.get(
         "reason",
         "Service health verification failed after recovery action"
@@ -161,6 +162,7 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
             f"Alert: {alertname}",
             f"Target: {target}",
             f"Retry: {retry}",
+            f"Failure Stage: {failure_stage}",
             "",
             f"결과: {reason}",
             "운영자 확인이 필요합니다.",

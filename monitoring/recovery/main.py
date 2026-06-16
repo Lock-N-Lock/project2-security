@@ -60,7 +60,7 @@ def update_and_save_state(lock_key, timestamp):
         save_state(last_recovery_at)
 
 
-def notify_recovery_failed(alertname, target, retry, reason):
+def notify_recovery_failed(alertname, target, retry, reason, failure_stage="unknown"):
     try:
         requests.post(
             "http://telegram-notifier:8080/recovery-failed",
@@ -69,6 +69,7 @@ def notify_recovery_failed(alertname, target, retry, reason):
                 "target": target,
                 "retry": retry,
                 "reason": reason,
+                "failure_stage": failure_stage,
             },
             timeout=5,
         )
@@ -198,7 +199,8 @@ def run_recovery_task(
             alertname,
             target,
             retry,
-            "Service health verification failed after recovery action"
+            "Service health verification failed after recovery action",
+            failure_stage="verify",
         )
         update_and_save_state(lock_key, time.time())
 
