@@ -53,7 +53,9 @@ Thumbs.db
 .vscode/
 
 # ============ 프로젝트별 ============
-# Recovery Controller
+# Monitoring
+monitoring/lambda/cloudwatch-telegram-notifier/lambda.zip
+monitoring/lambda/cloudwatch-telegram-notifier/trust-policy.json
 monitoring/recovery/logs/*.log
 monitoring/recovery/logs/recovery_state.json
 monitoring/recovery/logs/recovery_state.tmp

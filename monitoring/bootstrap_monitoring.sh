@@ -6,6 +6,29 @@ echo "============================================="
 echo " Lock & Lock Monitoring Bootstrap"
 echo "============================================="
 
+prompt_if_empty() {
+    local key="$1"
+    local default="${2:-}"
+    local secret="${3:-false}"
+
+    local value
+    value="$(grep -E "^${key}=" .env | head -1 | cut -d '=' -f2- || true)"
+
+    if [ -z "$value" ]; then
+        if [ "$secret" = "true" ]; then
+            read -r -s -p "${key}: " value
+            echo ""
+        elif [ -n "$default" ]; then
+            read -r -p "${key} [${default}]: " value
+            value="${value:-$default}"
+        else
+            read -r -p "${key}: " value
+        fi
+
+        sed -i "s|^${key}=.*|${key}=${value}|" .env
+    fi
+}
+
 if ! command -v aws >/dev/null 2>&1; then
     echo "[ERROR] aws CLI가 설치되어 있지 않습니다."
     exit 1
@@ -19,7 +42,58 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
-echo "[OK] .env 확인"
+echo "[OK] .env 파일 확인 완료"
+
+install_zip_on_rocky() {
+    if command -v zip >/dev/null 2>&1; then
+        return 0
+    fi
+
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+    else
+        echo "[ERROR] /etc/os-release 파일을 찾을 수 없습니다. zip 설치 여부를 확인할 수 없습니다."
+        exit 1
+    fi
+
+    if [[ "${ID:-}" != "rocky" && "${ID_LIKE:-}" != *"rhel"* ]]; then
+        echo "[ERROR] zip 명령어가 없고, 현재 OS가 Rocky/RHEL 계열이 아닙니다. zip을 수동 설치해주세요."
+        exit 1
+    fi
+
+    echo "[INFO] zip 패키지 설치 진행"
+
+    if command -v sudo >/dev/null 2>&1; then
+        sudo dnf install -y zip
+    else
+        dnf install -y zip
+    fi
+}
+
+install_zip_on_rocky
+
+required_commands=(
+    aws
+    docker
+    tailscale
+    zip
+)
+
+for cmd in "${required_commands[@]}"; do
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "[ERROR] ${cmd} 명령어를 찾을 수 없습니다."
+        exit 1
+    fi
+done
+
+echo "[OK] 필수 명령어 확인 완료"
+
+prompt_if_empty "TS_API_KEY" "" true
+prompt_if_empty "TELEGRAM_BOT_TOKEN" "" true
+prompt_if_empty "TELEGRAM_CHAT_ID" "" true
+prompt_if_empty "AWS_ACCESS_KEY_ID" "" true
+prompt_if_empty "AWS_SECRET_ACCESS_KEY" "" true
+prompt_if_empty "AWS_DEFAULT_REGION" "ap-northeast-2"
 
 required_vars=(
     TS_API_KEY
@@ -39,7 +113,7 @@ for var in "${required_vars[@]}"; do
     fi
 done
 
-echo "[OK] .env 필수값 확인"
+echo "[OK] .env 필수값 확인 완료"
 
 APP_IP=$(tailscale status | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
 
@@ -53,6 +127,9 @@ APP_HEALTH_URL="http://${APP_IP}/health"
 export AWS_ACCESS_KEY_ID="$(awk -F= '$1=="AWS_ACCESS_KEY_ID"{print substr($0, index($0,$2)); exit}' .env)"
 export AWS_SECRET_ACCESS_KEY="$(awk -F= '$1=="AWS_SECRET_ACCESS_KEY"{print substr($0, index($0,$2)); exit}' .env)"
 export AWS_DEFAULT_REGION="$(awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env)"
+SNS_TOPIC_NAME="$(awk -F= '$1=="SNS_TOPIC_NAME"{print substr($0, index($0,$2)); exit}' .env)"
+SNS_TOPIC_NAME="${SNS_TOPIC_NAME:-lb-alerts}"
+export SNS_TOPIC_NAME
 
 AWS_ALB_LOAD_BALANCER=$(
     aws elbv2 describe-load-balancers \
@@ -132,8 +209,17 @@ AWS_BASTION_PUBLIC_IP=${AWS_BASTION_PUBLIC_IP}
 AWS_SSH_KEY_PATH=/app/ssh/lb-key.pem
 EOF
 
-echo "[OK] Generated .env.generated"
+echo "[OK] .env.generated 생성 완료"
 cat .env.generated
+
+if [ -x "./lambda/cloudwatch-telegram-notifier/deploy_cloudwatch_telegram_lambda.sh" ]; then
+    echo "[INFO] CloudWatch Telegram Notifier 배포 시작"
+    ./lambda/cloudwatch-telegram-notifier/deploy_cloudwatch_telegram_lambda.sh
+    echo "[OK] CloudWatch Telegram Notifier 배포 완료"
+else
+    echo "[ERROR] CloudWatch Telegram Notifier 배포 스크립트를 찾을 수 없거나 실행 권한이 없습니다."
+    exit 1
+fi
 
 docker compose \
     --env-file .env \
@@ -141,7 +227,32 @@ docker compose \
     -f docker-compose.monitoring.yaml \
     up -d
 
-echo "[OK] Monitoring Stack Started"
+LAMBDA_FUNCTION_NAME="lb-cloudwatch-telegram-notifier"
+
+LAMBDA_ARN=$(
+    aws lambda get-function \
+        --function-name "${LAMBDA_FUNCTION_NAME}" \
+        --query 'Configuration.FunctionArn' \
+        --output text 2>/dev/null || true
+)
+
+SNS_TOPIC_ARN=$(
+    aws sns list-topics \
+        --query "Topics[?ends_with(TopicArn, ':${SNS_TOPIC_NAME}')].TopicArn | [0]" \
+        --output text 2>/dev/null || true
+)
+
+if [ -z "$SNS_TOPIC_ARN" ] || [ "$SNS_TOPIC_ARN" = "None" ]; then
+    echo "[ERROR] SNS Topic 자동 조회 실패: ${SNS_TOPIC_NAME}"
+    exit 1
+fi
+
+if [ -z "$LAMBDA_ARN" ] || [ "$LAMBDA_ARN" = "None" ]; then
+    echo "[ERROR] Lambda 자동 조회 실패: ${LAMBDA_FUNCTION_NAME}"
+    exit 1
+fi
+
+echo "[OK] Monitoring Stack 시작 완료"
 
 echo ""
 echo "============================================="
@@ -162,14 +273,31 @@ echo "BLUE_ASG            = ${AWS_BLUE_ASG_NAME}"
 echo "GREEN_ASG           = ${AWS_GREEN_ASG_NAME}"
 
 echo ""
+echo "SNS_TOPIC           = ${SNS_TOPIC_NAME}"
+echo "SNS_TOPIC_ARN       = ${SNS_TOPIC_ARN}"
+echo "LAMBDA_FUNCTION     = ${LAMBDA_FUNCTION_NAME}"
+echo "LAMBDA_ARN          = ${LAMBDA_ARN}"
+
+echo ""
 echo "============================================="
 echo " Service Discovery"
 echo "============================================="
 
-curl -sf http://localhost:9999/app-targets >/dev/null \
-    && echo "[OK] app-targets" \
-    || echo "[FAIL] app-targets"
+check_sd_endpoint() {
+    local name="$1"
+    local path="$2"
 
-curl -sf http://localhost:9999/db-targets >/dev/null \
-    && echo "[OK] db-targets" \
-    || echo "[FAIL] db-targets"
+    if docker exec -i monitoring-tailscale-sd-1 python -c "
+import urllib.request
+data = urllib.request.urlopen('http://127.0.0.1:9999${path}', timeout=3).read().decode().strip()
+raise SystemExit(0 if data and data != '[]' else 1)
+" >/dev/null 2>&1
+    then
+        echo "[OK] ${name}"
+    else
+        echo "[FAIL] ${name}"
+    fi
+}
+
+check_sd_endpoint "app-targets" "/app-targets"
+check_sd_endpoint "db-targets" "/db-targets"
