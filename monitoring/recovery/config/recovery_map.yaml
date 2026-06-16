@@ -55,6 +55,11 @@ BankAppDown:
 
   command: "bash ./actions/aws_app_restart.sh"
 
+  pre_verify:
+    type: http
+    url: "${APP_HEALTH_URL}"
+    timeout: 5
+
   verify:
     type: http
     url: "${APP_HEALTH_URL}"

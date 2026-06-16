@@ -78,7 +78,14 @@ def notify_recovery_failed(alertname, target, retry, reason, failure_stage="unkn
             f"failed to notify recovery failure: {alertname}, error={e}"
         )
 
-def notify_recovery_success(alertname, target, verify_url):
+def notify_recovery_success(
+    alertname,
+    target,
+    verify_url,
+    started_at=None,
+    recovered_at=None,
+    duration_seconds=None,
+):
     try:
         requests.post(
             "http://telegram-notifier:8080/recovery-success",
@@ -86,6 +93,9 @@ def notify_recovery_success(alertname, target, verify_url):
                 "alertname": alertname,
                 "target": target,
                 "verify_url": verify_url,
+                "started_at": started_at,
+                "recovered_at": recovered_at,
+                "duration_seconds": duration_seconds,
             },
             timeout=5,
         )
@@ -107,6 +117,9 @@ def run_recovery_task(
     target = target or "unknown"
 
     retry = max(int(retry), 1)
+
+    recovery_started_ts = time.time()
+    recovery_started_at = time.strftime("%Y-%m-%d %H:%M:%S")
 
     try:
         for attempt in range(1, retry + 1):
@@ -148,13 +161,26 @@ def run_recovery_task(
                         target=target
                     ).inc()
 
-                    write_recovery_log(f"verify success: {alertname}")
+                    recovered_ts = time.time()
+                    recovered_at = time.strftime("%Y-%m-%d %H:%M:%S")
+                    duration_seconds = round(
+                        recovered_ts - recovery_started_ts,
+                        2
+                    )
+
+                    write_recovery_log(
+                        f"verify success: {alertname}, "
+                        f"duration={duration_seconds}s"
+                    )
 
                     if notify_success:
                         notify_recovery_success(
                             alertname,
                             target,
-                            verify_url
+                            verify_url,
+                            recovery_started_at,
+                            recovered_at,
+                            duration_seconds,
                         )
                     update_and_save_state(lock_key, time.time())
                     return
@@ -178,7 +204,15 @@ def run_recovery_task(
                         alertname=alertname,
                         target=target
                     ).inc()
-                    write_recovery_log(f"verify success: {alertname}")
+                    recovered_ts = time.time()
+                    duration_seconds = round(
+                        recovered_ts - recovery_started_ts,
+                        2
+                    )
+                    write_recovery_log(
+                        f"verify success: {alertname}, "
+                        f"duration={duration_seconds}s"
+                    )
                     update_and_save_state(lock_key, time.time())
                     return
 
