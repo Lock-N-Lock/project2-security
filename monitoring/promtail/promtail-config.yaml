@@ -15,4 +15,12 @@ scrape_configs:
           - localhost
         labels:
           job: recovery-logs
-          __path__: /app/logs/*.log
+          __path__: /app/logs/recovery.log
+
+  - job_name: critical-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: critical-logs
+          __path__: /app/logs/critical.log

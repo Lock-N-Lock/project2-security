@@ -2,9 +2,28 @@ global:
   resolve_timeout: 5m
 
 route:
-  receiver: recovery-webhook
+  receiver: telegram-notifier
+  group_wait: 5s
+  group_interval: 5m
+  repeat_interval: 30m
+  routes:
+    - matchers:
+        - category="maintenance"
+      receiver: recovery-webhook
+      continue: false
+
+    - receiver: telegram-notifier
+      continue: true
+
+    - receiver: recovery-webhook
+      continue: true
 
 receivers:
+  - name: telegram-notifier
+    webhook_configs:
+      - url: "http://telegram-notifier:8080/alert"
+        send_resolved: true
+
   - name: recovery-webhook
     webhook_configs:
       - url: "http://recovery:8000/webhook"

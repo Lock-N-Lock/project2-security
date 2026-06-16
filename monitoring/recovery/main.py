@@ -1,3 +1,4 @@
+import requests
 import time
 import json
 import threading
@@ -59,68 +60,146 @@ def update_and_save_state(lock_key, timestamp):
         save_state(last_recovery_at)
 
 
-def run_recovery_task(lock_key, alertname, target, command, verify):
+def notify_recovery_failed(alertname, target, retry, reason):
+    try:
+        requests.post(
+            "http://telegram-notifier:8080/recovery-failed",
+            json={
+                "alertname": alertname,
+                "target": target,
+                "retry": retry,
+                "reason": reason,
+            },
+            timeout=5,
+        )
+    except Exception as e:
+        write_critical_log(
+            f"failed to notify recovery failure: {alertname}, error={e}"
+        )
+
+def notify_recovery_success(alertname, target, verify_url):
+    try:
+        requests.post(
+            "http://telegram-notifier:8080/recovery-success",
+            json={
+                "alertname": alertname,
+                "target": target,
+                "verify_url": verify_url,
+            },
+            timeout=5,
+        )
+    except Exception as e:
+        write_critical_log(
+            f"failed to notify recovery success: {alertname}, error={e}"
+        )
+
+def run_recovery_task(
+    lock_key,
+    alertname,
+    target,
+    command,
+    verify,
+    retry,
+    notify_success=False,
+):
     verify = verify or {}
     target = target or "unknown"
-    recovery_attempt_total.labels(
-        alertname=alertname,
-        target=target
-    ).inc()
+
+    retry = max(int(retry), 1)
+
     try:
-        action_success = run_command(command)
+        for attempt in range(1, retry + 1):
+            recovery_attempt_total.labels(
+                alertname=alertname,
+                target=target
+            ).inc()
 
-        if not action_success:
-            write_critical_log(f"action failed: {alertname}")
-            update_and_save_state(lock_key, time.time())
-            return
-
-        write_recovery_log(f"action success: {alertname}")
-        time.sleep(2)
-
-        if verify.get("type") == "http":
-            verify_url = verify.get("url")
-            verify_timeout = verify.get("timeout", 5)
-
-            verify_success = verify_http(
-                verify_url,
-                timeout=verify_timeout
+            write_recovery_log(
+                f"recovery attempt {attempt}/{retry}: {alertname}"
             )
 
-            if verify_success:
-                recovery_success_total.labels(
-                    alertname=alertname,
-                    target=target
-                ).inc()
-                write_recovery_log(f"verify success: {alertname}")
-                update_and_save_state(lock_key, time.time())
-                return
+            action_success = run_command(command)
 
-            write_critical_log(f"verify failed: {alertname}")
-            update_and_save_state(lock_key, time.time())
-            return
+            if not action_success:
+                write_recovery_log(
+                    f"action failed: {alertname}, attempt={attempt}/{retry}"
+                )
+                time.sleep(2)
+                continue
 
-        elif verify.get("type") == "command":
-            verify_command = verify.get("command")
-
-            verify_success = run_command(
-                verify_command,
-                timeout=verify.get("timeout", 5)
+            write_recovery_log(
+                f"action success: {alertname}, attempt={attempt}/{retry}"
             )
+            time.sleep(2)
 
-            if verify_success:
-                recovery_success_total.labels(
-                    alertname=alertname,
-                    target=target
-                ).inc()
-                write_recovery_log(f"verify success: {alertname}")
-                update_and_save_state(lock_key, time.time())
-                return
+            if verify.get("type") == "http":
+                verify_url = verify.get("url")
+                verify_timeout = verify.get("timeout", 5)
 
-            write_critical_log(f"verify failed: {alertname}")
+                verify_success = verify_http(
+                    verify_url,
+                    timeout=verify_timeout
+                )
+
+                if verify_success:
+                    recovery_success_total.labels(
+                        alertname=alertname,
+                        target=target
+                    ).inc()
+
+                    write_recovery_log(f"verify success: {alertname}")
+
+                    if notify_success:
+                        notify_recovery_success(
+                            alertname,
+                            target,
+                            verify_url
+                        )
+                    update_and_save_state(lock_key, time.time())
+                    return
+
+                write_recovery_log(
+                    f"verify failed: {alertname}, attempt={attempt}/{retry}"
+                )
+                time.sleep(2)
+                continue
+
+            if verify.get("type") == "command":
+                verify_command = verify.get("command")
+
+                verify_success = run_command(
+                    verify_command,
+                    timeout=verify.get("timeout", 5)
+                )
+
+                if verify_success:
+                    recovery_success_total.labels(
+                        alertname=alertname,
+                        target=target
+                    ).inc()
+                    write_recovery_log(f"verify success: {alertname}")
+                    update_and_save_state(lock_key, time.time())
+                    return
+
+                write_recovery_log(
+                    f"verify failed: {alertname}, attempt={attempt}/{retry}"
+                )
+                time.sleep(2)
+                continue
+
+            write_recovery_log(f"verify skipped: {alertname}")
             update_and_save_state(lock_key, time.time())
             return
 
-        write_recovery_log(f"verify skipped: {alertname}")
+        write_critical_log(
+            f"recovery failed after retries: {alertname}, retry={retry}"
+        )
+        notify_recovery_failed(
+            alertname,
+            target,
+            retry,
+            "Recovery failed after retries"
+        )
         update_and_save_state(lock_key, time.time())
 
     except Exception as e:
@@ -189,7 +268,27 @@ def webhook(payload: dict, background_tasks: BackgroundTasks):
     lock_key = f"{alertname}:{target}"
     cooldown = int(policy.get("cooldown", 0))
     verify = policy.get("verify", {})
+    retry = int(policy.get("retry", 1))
     now = time.time()
+
+    pre_verify = policy.get("pre_verify", {})
+
+    if pre_verify.get("type") == "http":
+        verify_url = pre_verify.get("url")
+        verify_timeout = pre_verify.get("timeout", 5)
+
+        if verify_http(verify_url, timeout=verify_timeout):
+            write_recovery_log(
+                f"pre-verify success, recovery skipped: {alertname}"
+            )
+            update_and_save_state(lock_key, time.time())
+
+            return {
+                "status": "skipped",
+                "alertname": alertname,
+                "target": target,
+                "message": "service already healthy"
+            }
 
     with state_lock:
         if lock_key in active_recoveries:
@@ -223,7 +322,9 @@ def webhook(payload: dict, background_tasks: BackgroundTasks):
         alertname,
         target,
         command,
-        verify
+        verify,
+        retry,
+        policy.get("notify_success", False),
     )
 
     return {

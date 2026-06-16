@@ -18,7 +18,6 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 1,
   "links": [],
   "panels": [
     {
@@ -36,7 +35,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - App job_name 확정 필요\nExpected metric: up{job=\"lockbank-app\"}",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: max(up{job=\"app-nodes\", instance=~\".*:8080\"})\nPurpose: 현재 활성 App metrics endpoint 상태 확인",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -63,12 +62,12 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "green",
+                    "value": 1
                   }
                 ]
               }
@@ -79,12 +78,12 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 34
+            "y": 1
           },
           "id": 1,
           "options": {
-            "colorMode": "background",
-            "graphMode": "area",
+            "colorMode": "value",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -106,14 +105,14 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"lockbank-app\"}",
+              "expr": "max(up{job=\"app-nodes\", instance=~\".*:8080\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "App Status",
+          "title": "Application Status",
           "type": "stat"
         },
         {
@@ -121,7 +120,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Pending - DB node/postgres-exporter scrape 검증 필요\nExpected metric: up{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
+          "description": "Owner: B Track\nData Source: Prometheus\nStatus: Active\nMetric: pg_up\nPurpose: PostgreSQL 연결 상태 확인",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -148,12 +147,12 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
+                    "color": "red",
                     "value": null
                   },
                   {
-                    "color": "red",
-                    "value": 80
+                    "color": "green",
+                    "value": 1
                   }
                 ]
               }
@@ -164,12 +163,12 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 34
+            "y": 1
           },
           "id": 15,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -191,7 +190,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
+              "expr": "pg_up",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -212,17 +211,7 @@
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "index": 0,
-                      "text": "NORMAL"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -232,7 +221,7 @@
                   },
                   {
                     "color": "red",
-                    "value": 80
+                    "value": 1
                   }
                 ]
               }
@@ -243,12 +232,12 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 42
+            "y": 9
           },
           "id": 16,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -291,30 +280,17 @@
               "color": {
                 "mode": "thresholds"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "index": 0,
-                      "text": "NONE"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
                   {
                     "color": "green",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
-              }
+              },
+              "decimals": 0
             },
             "overrides": []
           },
@@ -322,12 +298,12 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 42
+            "y": 9
           },
           "id": 17,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -349,7 +325,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "increase(recovery_success_total[24h])",
+              "expr": "sum(increase(recovery_success_total[24h]))",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -378,12 +354,12 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Recovery Controller logs collected by Promtail and Loki.\nUsed to trace Alert → Recovery → Verify → Critical events.",
+          "description": "Owner: D Track\n\nData Source: Loki\n\nStatus: Active\n\nPurpose: Operational and security events timeline.\n\nExpected log sources:\nrecovery-logs\ncritical-logs\nsecurity-logs\nfail2ban-logs\nnginx-logs\ngithub-actions\n\nFlow:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
           "gridPos": {
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 35
+            "y": 2
           },
           "id": 2,
           "options": {
@@ -403,109 +379,13 @@
                 "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "{job=\"recovery-logs\"}",
+              "expr": "{job=~\"recovery-logs|critical-logs|security-logs|fail2ban-logs|nginx-logs|github-actions\"}",
               "queryType": "range",
               "refId": "A"
             }
           ],
           "title": "Unified Event Timeline",
           "type": "logs"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: E Track\n\nData Source: Prometheus\n\nHTTP 401 responses over time.\n\nUsed to visualize login attack scenarios.\n\nExpected metric:\nnginx_http_requests_total{status=\"401\"}",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "palette-classic"
-              },
-              "custom": {
-                "axisBorderShow": false,
-                "axisCenteredZero": false,
-                "axisColorMode": "text",
-                "axisLabel": "",
-                "axisPlacement": "auto",
-                "barAlignment": 0,
-                "drawStyle": "line",
-                "fillOpacity": 0,
-                "gradientMode": "none",
-                "hideFrom": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": false
-                },
-                "insertNulls": false,
-                "lineInterpolation": "linear",
-                "lineWidth": 1,
-                "pointSize": 5,
-                "scaleDistribution": {
-                  "type": "linear"
-                },
-                "showPoints": "auto",
-                "spanNulls": false,
-                "stacking": {
-                  "group": "A",
-                  "mode": "none"
-                },
-                "thresholdsStyle": {
-                  "mode": "off"
-                }
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 35
-          },
-          "id": 18,
-          "options": {
-            "legend": {
-              "calcs": [],
-              "displayMode": "list",
-              "placement": "bottom",
-              "showLegend": true
-            },
-            "tooltip": {
-              "mode": "single",
-              "sort": "none"
-            }
-          },
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "increase(nginx_http_requests_total{status=\"401\"}[5m])",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "HTTP 401 Count",
-          "type": "timeseries"
         }
       ],
       "title": "Event Timeline",
@@ -523,26 +403,48 @@
       "panels": [
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Owner: E Track / B Track\n\nData Source: Prometheus\n\nLogin failure count over the last 5 minutes.\n\nExpected metric:\nlogin_fail_total",
+          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize login attack attempts through HTTP 401 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nHTTP 401 in /var/log/nginx/access.log",
           "fieldConfig": {
             "defaults": {
               "color": {
-                "mode": "thresholds"
+                "mode": "palette-classic"
               },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "index": 0,
-                      "text": "NORMAL"
-                    }
-                  },
-                  "type": "value"
+              "custom": {
+                "axisBorderShow": false,
+                "axisCenteredZero": false,
+                "axisColorMode": "text",
+                "axisLabel": "",
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 0,
+                "gradientMode": "none",
+                "hideFrom": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": false
+                },
+                "insertNulls": false,
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "scaleDistribution": {
+                  "type": "linear"
+                },
+                "showPoints": "auto",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                },
+                "thresholdsStyle": {
+                  "mode": "off"
                 }
-              ],
+              },
+              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -552,7 +454,7 @@
                   },
                   {
                     "color": "red",
-                    "value": 80
+                    "value": 1
                   }
                 ]
               }
@@ -565,10 +467,72 @@
             "x": 0,
             "y": 3
           },
+          "id": 18,
+          "options": {
+            "legend": {
+              "calcs": [],
+              "displayMode": "list",
+              "placement": "bottom",
+              "showLegend": true
+            },
+            "tooltip": {
+              "mode": "single",
+              "sort": "none"
+            }
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \" 401 \" [5m]))",
+              "queryType": "range",
+              "legendFormat": "HTTP 401",
+              "refId": "A"
+            }
+          ],
+          "title": "HTTP 401 Count",
+          "type": "timeseries"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize login failure attempts through /login HTTP 401 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nuri=/login and status=401 in /var/log/nginx/access.log",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 3
+          },
           "id": 3,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -586,14 +550,13 @@
           "targets": [
             {
               "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "increase(login_fail_total[5m])",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
+              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \"\\\"uri\\\":\\\"/login\" |= \"\\\"status\\\":401\" [5m]))",
+              "queryType": "range",
+              "legendFormat": "Login Failure",
               "refId": "A"
             }
           ],
@@ -602,10 +565,10 @@
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Owner: E Track\n\nData Source: Prometheus\n\nHTTP 429 responses over time.\n\nUsed to visualize API Flooding and Rate Limit scenarios.",
+          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize API Flooding / Rate Limit events through HTTP 429 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nHTTP 429 in /var/log/nginx/access.log",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -663,8 +626,8 @@
           "gridPos": {
             "h": 8,
             "w": 12,
-            "x": 12,
-            "y": 3
+            "x": 0,
+            "y": 11
           },
           "id": 32,
           "options": {
@@ -682,14 +645,13 @@
           "targets": [
             {
               "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "increase(nginx_http_requests_total{status=\"429\"}[5m])",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
+              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \" 429 \" [5m]))",
+              "queryType": "range",
+              "legendFormat": "HTTP 429",
               "refId": "A"
             }
           ],
@@ -698,10 +660,10 @@
         },
         {
           "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Owner: E Track\n\nData Source: Prometheus\n\nRate limit trigger count over the last 5 minutes.\n\nUsed to verify API Flooding response.\n\nExpected metric:\nnginx_http_requests_total{status=\"429\"}",
+          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - fail2ban log collection required\n\nPurpose: Count blocked IP events detected by fail2ban.\n\nExpected log source:\nfail2ban\n\nExpected pattern:\nBan event in /var/log/fail2ban.log",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -718,82 +680,6 @@
                   "type": "value"
                 }
               ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 11
-          },
-          "id": 19,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "increase(nginx_http_requests_total{status=\"429\"}[5m])",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Rate Limit Trigger Count",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "description": "Owner: E Track\n\nData Source: Loki\n\nBlocked IP list collected from fail2ban logs.\n\nExpected source:\nfail2ban.log",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
-              },
-              "mappings": [],
               "thresholds": {
                 "mode": "absolute",
                 "steps": [
@@ -816,83 +702,10 @@
             "x": 12,
             "y": 11
           },
-          "id": 33,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
-              },
-              "editorMode": "code",
-              "expr": "{job=\"fail2ban\"} |= \"Ban\"",
-              "queryType": "range",
-              "refId": "A"
-            }
-          ],
-          "title": "Blocked IP List",
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: E Track\n\nData Source: Prometheus\n\nCurrent number of blocked IP addresses.\n\nExpected metric:\nfail2ban_banned_ips_total",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [
-                {
-                  "options": {
-                    "0": {
-                      "index": 0,
-                      "text": "NORMAL"
-                    }
-                  },
-                  "type": "value"
-                }
-              ],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 19
-          },
           "id": 20,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -913,8 +726,7 @@
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "editorMode": "code",
-              "expr": "fail2ban_banned_ips_total",
+              "expr": "sum(count_over_time({job=\"fail2ban\"} |= \"Ban\" [$__range]))",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1231,7 +1043,7 @@
             "type": "prometheus",
             "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nTransfer API request count over the last 5 minutes.\n\nExpected metric:\ntransfer_request_total",
+          "description": "Owner: B Track\n\nData Source: Prometheus\n\nTransfer API request count over the last 5 minutes.\n\nExpected metric:\ntransfer_requests_total",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1263,7 +1075,7 @@
           "id": 36,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1285,7 +1097,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "increase(transfer_request_total[5m])",
+              "expr": "increase(transfer_requests_total[5m])",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -1293,75 +1105,6 @@
             }
           ],
           "title": "Transfer Request Count",
-          "type": "stat"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nCurrent active users.\n\nExpected metric:\nactive_users",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 20
-          },
-          "id": 37,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "active_users",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Active Users",
           "type": "stat"
         }
       ],
@@ -1376,169 +1119,14 @@
         "x": 0,
         "y": 4
       },
-      "id": 12,
-      "panels": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: D Track / B Track\n\nData Source: Prometheus\n\nService and exporter scrape status.\n\nUsed for Prometheus-based service/container health monitoring.",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "custom": {
-                "align": "auto",
-                "cellOptions": {
-                  "type": "auto"
-                },
-                "inspect": false
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 37
-          },
-          "id": 25,
-          "options": {
-            "cellHeight": "sm",
-            "footer": {
-              "countRows": false,
-              "fields": "",
-              "reducer": [
-                "sum"
-              ],
-              "show": false
-            },
-            "showHeader": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "up",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "Container Status",
-          "type": "table"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "description": "Owner: B Track\n\nData Source: Prometheus\n\nPostgreSQL exporter status.\n\nExpected metric:\nup{job=\"db-node\", instance=~\".*:9187\"} or pg_up",
-          "fieldConfig": {
-            "defaults": {
-              "color": {
-                "mode": "thresholds"
-              },
-              "mappings": [],
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 37
-          },
-          "id": 39,
-          "options": {
-            "colorMode": "value",
-            "graphMode": "area",
-            "justifyMode": "auto",
-            "orientation": "auto",
-            "reduceOptions": {
-              "calcs": [
-                "lastNotNull"
-              ],
-              "fields": "",
-              "values": false
-            },
-            "showPercentChange": false,
-            "textMode": "auto",
-            "wideLayout": true
-          },
-          "pluginVersion": "10.4.2",
-          "targets": [
-            {
-              "datasource": {
-                "type": "prometheus",
-                "uid": "PBFA97CFB590B2093"
-              },
-              "editorMode": "code",
-              "expr": "up{job=\"db-node\", instance=~\".*:9187\"}",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
-              "refId": "A"
-            }
-          ],
-          "title": "PostgreSQL Status",
-          "type": "stat"
-        }
-      ],
-      "title": "Infrastructure (Prometheus)",
-      "type": "row"
-    },
-    {
-      "collapsed": true,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 5
-      },
       "id": 38,
       "panels": [
         {
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "P034F075C744B399F"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: A Track\n\nData Source: CloudWatch\n\nEC2 CPU utilization.\n\nStatus: Pending - AWS apply / CloudWatch datasource connection required",
+          "description": "Owner: D Track\n\nData Source: Prometheus\n\nApp 노드의 Node Exporter 기반 CPU 사용률.\n\nStatus: Active",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1597,7 +1185,7 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 30
+            "y": 5
           },
           "id": 5,
           "options": {
@@ -1615,25 +1203,14 @@
           "targets": [
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "CPUUtilization",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "",
-              "queryMode": "Metrics",
-              "refId": "A",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Average"
+              "editorMode": "code",
+              "expr": "100 - ((avg by(instance) (rate(node_cpu_seconds_total{job=\"app-nodes\",instance=~\".*:9100\",mode=\"idle\"}[5m])) and on(instance) (up{job=\"app-nodes\",instance=~\".*:9100\"} == 1)) * 100)",
+              "legendFormat": "{{instance}}",
+              "range": true,
+              "refId": "A"
             }
           ],
           "title": "CPU Usage",
@@ -1641,10 +1218,10 @@
         },
         {
           "datasource": {
-            "type": "cloudwatch",
-            "uid": "P034F075C744B399F"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: A Track\n\nData Source: CloudWatch\n\nALB Target Group healthy host count.",
+          "description": "Owner: D Track\n\nData Source: Prometheus\n\nApp 노드의 Node Exporter 기반 Network In/Out 트래픽.\n\nStatus: Active",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -1703,7 +1280,7 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 30
+            "y": 5
           },
           "id": 24,
           "options": {
@@ -1721,48 +1298,25 @@
           "targets": [
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "NetworkIn",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "300",
-              "queryMode": "Metrics",
-              "refId": "A",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Sum"
+              "editorMode": "code",
+              "expr": "sum(rate(node_network_receive_bytes_total{job=\"app-nodes\",instance=~\".*:9100\",device!=\"lo\"}[5m]))",
+              "legendFormat": "Network In",
+              "range": true,
+              "refId": "A"
             },
             {
               "datasource": {
-                "type": "cloudwatch",
-                "uid": "P034F075C744B399F"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
-              "dimensions": {},
-              "expression": "",
-              "hide": false,
-              "id": "",
-              "label": "",
-              "logGroups": [],
-              "matchExact": true,
-              "metricEditorMode": 0,
-              "metricName": "NetworkOut",
-              "metricQueryType": 0,
-              "namespace": "AWS/EC2",
-              "period": "300",
-              "queryMode": "Metrics",
-              "refId": "B",
-              "region": "default",
-              "sqlExpression": "",
-              "statistic": "Sum"
+              "editorMode": "code",
+              "expr": "sum(rate(node_network_transmit_bytes_total{job=\"app-nodes\",instance=~\".*:9100\",device!=\"lo\"}[5m]))",
+              "legendFormat": "Network Out",
+              "range": true,
+              "refId": "B"
             }
           ],
           "title": "Network In/Out",
@@ -1814,12 +1368,12 @@
             "h": 8,
             "w": 12,
             "x": 0,
-            "y": 38
+            "y": 13
           },
           "id": 40,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1893,12 +1447,12 @@
             "h": 8,
             "w": 12,
             "x": 12,
-            "y": 38
+            "y": 13
           },
           "id": 23,
           "options": {
             "colorMode": "value",
-            "graphMode": "area",
+            "graphMode": "none",
             "justifyMode": "auto",
             "orientation": "auto",
             "reduceOptions": {
@@ -1941,683 +1495,686 @@
           "type": "stat"
         }
       ],
-      "title": "Cloud Infrastructure (CloudWatch)",
+      "title": "Infrastructure",
       "type": "row"
     },
     {
-      "collapsed": false,
+      "collapsed": true,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "id": 13,
+      "panels": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Owner: D Track\n\nData Source: Prometheus\n\nRecovery attempts during the last 24 hours.\n\nExpected metric:\nrecovery_attempt_total",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "decimals": 0,
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 6
+          },
+          "id": 6,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "sum(increase(recovery_attempt_total[24h]))",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Recovery Attempt Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Owner: D Track Data Source: Prometheus Recovery success rate. Expected metrics: recovery_success_total, recovery_attempt_total",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              },
+              "unit": "percent"
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 6
+          },
+          "id": 26,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "(\r\n  sum(increase(recovery_success_total[24h]))\r\n  /\r\n  clamp_min(sum(increase(recovery_attempt_total[24h])), 1)\r\n) * 100",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Recovery Success Rate",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 14
+          },
+          "id": 28,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"recovery-logs\"} |= \"INFO\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Recovery Log",
+          "type": "logs"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 14
+          },
+          "id": 29,
+          "options": {
+            "dedupStrategy": "none",
+            "enableLogDetails": true,
+            "prettifyLogMessage": false,
+            "showCommonLabels": false,
+            "showLabels": false,
+            "showTime": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": false
+          },
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"critical-logs\"}",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Critical Log",
+          "type": "logs"
+        }
+      ],
+      "title": "Response & Recovery",
+      "type": "row"
+    },
+    {
+      "collapsed": true,
       "gridPos": {
         "h": 1,
         "w": 24,
         "x": 0,
         "y": 6
       },
-      "id": 13,
-      "panels": [],
-      "title": "Response & Recovery",
-      "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "Owner: D Track\n\nData Source: Prometheus\n\nRecovery attempts during the last 24 hours.\n\nExpected metric:\nrecovery_attempt_total",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "id": 6,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "increase(recovery_attempt_total[24h])",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Recovery Attempt Count",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "Owner: D Track Data Source: Prometheus Recovery success rate. Expected metrics: recovery_success_total, recovery_attempt_total",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 7
-      },
-      "id": 26,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "(\r\n  recovery_success_total\r\n  /\r\n  recovery_attempt_total\r\n) * 100",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Recovery Success Rate",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 15
-      },
-      "id": 28,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"recovery-logs\"} |= \"INFO\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Recovery Log",
-      "type": "logs"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 15
-      },
-      "id": 29,
-      "options": {
-        "dedupStrategy": "none",
-        "enableLogDetails": true,
-        "prettifyLogMessage": false,
-        "showCommonLabels": false,
-        "showLabels": false,
-        "showTime": false,
-        "sortOrder": "Descending",
-        "wrapLogMessage": false
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"recovery-logs\"} |= \"ERROR\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Critical Log",
-      "type": "logs"
-    },
-    {
-      "collapsed": false,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 23
-      },
       "id": 14,
-      "panels": [],
+      "panels": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "Owner: C Track\n\nData Source: Loki\n\nBandit security scan result.\n\nExpected source:\nGitHub Actions pipeline log",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 7
+          },
+          "id": 41,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"github-actions\"} |= \"Bandit\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Bandit Scan Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "Owner: C Track\n\nContainer image vulnerability scan result.\n\nExpected source:\nGitHub Actions pipeline log",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 7
+          },
+          "id": 42,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"github-actions\"} |= \"Trivy\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "Trivy Scan Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "P8E80F9AEF21F6940"
+          },
+          "description": "Owner: C Track\n\nWeb vulnerability scan result.\n\nExpected source:\nGitHub Actions pipeline log",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 15
+          },
+          "id": 43,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "loki",
+                "uid": "P8E80F9AEF21F6940"
+              },
+              "editorMode": "code",
+              "expr": "{job=\"github-actions\"} |= \"ZAP\"",
+              "queryType": "range",
+              "refId": "A"
+            }
+          ],
+          "title": "ZAP Scan Status",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Owner: C Track\n\nGreen environment health status.\n\nExpected metric:\nup{job=\"green-app\"}",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "index": 0,
+                      "text": "UNHEALTHY"
+                    },
+                    "1": {
+                      "index": 1,
+                      "text": "HEALTHY"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 15
+          },
+          "id": 30,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "up{job=\"green-app\"}",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Green Health Check",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Owner: C Track\n\nDeployment rollback count during the last 24 hours.\n\nExpected metric:\nrollback_total",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 23
+          },
+          "id": 31,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "increase(rollback_total[24h])",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Rollback Count",
+          "type": "stat"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "description": "Owner: C Track\n\nData Source: Prometheus\n\nLast deployment result.\n\nExpected metric:\nlast_deploy_status\n\nStatus:\nPending - GitHub Actions deployment result metric required",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "thresholds"
+              },
+              "mappings": [
+                {
+                  "options": {
+                    "0": {
+                      "index": 0,
+                      "text": "FAILED"
+                    },
+                    "1": {
+                      "index": 1,
+                      "text": "SUCCESS"
+                    }
+                  },
+                  "type": "value"
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 23
+          },
+          "id": 7,
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "fields": "",
+              "values": false
+            },
+            "showPercentChange": false,
+            "textMode": "auto",
+            "wideLayout": true
+          },
+          "pluginVersion": "10.4.2",
+          "targets": [
+            {
+              "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+              },
+              "editorMode": "code",
+              "expr": "last_deploy_status",
+              "instant": false,
+              "legendFormat": "__auto",
+              "range": true,
+              "refId": "A"
+            }
+          ],
+          "title": "Last Deploy Status",
+          "type": "stat"
+        }
+      ],
       "title": "Secure Deployment",
       "type": "row"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "description": "Owner: C Track\n\nData Source: Loki\n\nBandit security scan result.\n\nExpected source:\nGitHub Actions pipeline log",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 24
-      },
-      "id": 41,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"github-actions\"} |= \"Bandit\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Bandit Scan Status",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "description": "Owner: C Track\n\nContainer image vulnerability scan result.\n\nExpected source:\nGitHub Actions pipeline log",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 24
-      },
-      "id": 42,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"github-actions\"} |= \"Trivy\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "Trivy Scan Status",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "loki",
-        "uid": "P8E80F9AEF21F6940"
-      },
-      "description": "Owner: C Track\n\nWeb vulnerability scan result.\n\nExpected source:\nGitHub Actions pipeline log",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 32
-      },
-      "id": 43,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
-          },
-          "editorMode": "code",
-          "expr": "{job=\"github-actions\"} |= \"ZAP\"",
-          "queryType": "range",
-          "refId": "A"
-        }
-      ],
-      "title": "ZAP Scan Status",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "Owner: C Track\n\nGreen environment health status.\n\nExpected metric:\nup{job=\"green-app\"}",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "UNHEALTHY"
-                },
-                "1": {
-                  "index": 1,
-                  "text": "HEALTHY"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 32
-      },
-      "id": 30,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "up{job=\"green-app\"}",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Green Health Check",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "Owner: C Track\n\nDeployment rollback count during the last 24 hours.\n\nExpected metric:\nrollback_total",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 40
-      },
-      "id": 31,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "increase(rollback_total[24h])",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Rollback Count",
-      "type": "stat"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "description": "Owner: C Track\n\nData Source: Prometheus\n\nLast deployment result.\n\nExpected metric:\nlast_deploy_status\n\nStatus:\nPending - GitHub Actions deployment result metric required",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [
-            {
-              "options": {
-                "0": {
-                  "index": 0,
-                  "text": "FAILED"
-                },
-                "1": {
-                  "index": 1,
-                  "text": "SUCCESS"
-                }
-              },
-              "type": "value"
-            }
-          ],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 40
-      },
-      "id": 7,
-      "options": {
-        "colorMode": "value",
-        "graphMode": "area",
-        "justifyMode": "auto",
-        "orientation": "auto",
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "showPercentChange": false,
-        "textMode": "auto",
-        "wideLayout": true
-      },
-      "pluginVersion": "10.4.2",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "expr": "last_deploy_status",
-          "instant": false,
-          "legendFormat": "__auto",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "Last Deploy Status",
-      "type": "stat"
     }
   ],
   "schemaVersion": 39,
@@ -2633,6 +2190,6 @@
   "timezone": "browser",
   "title": "LockBank Security & Operations Dashboard",
   "uid": "dfodmd3s8ecqoc",
-  "version": 12,
+  "version": 174,
   "weekStart": ""
 }
