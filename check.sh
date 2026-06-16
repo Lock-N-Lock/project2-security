@@ -84,7 +84,7 @@ echo ""
 # ── 5. 비용 안내 ───────────────────────────────────────────
 echo "[ 5 ] 비용 안내"
 echo "  - 개인 AWS 계정 사용 → 실습 후 반드시 make destroy"
-echo "  - destroy 전 'make backup' 으로 DB dump → S3 보존 (데이터 유실 방지)"
+echo "  - DB는 ansible 일일 cron(pg_dump→S3)으로 백업됨. destroy 전 최신 dump 확인 권장"
 echo ""
 
 echo "============================================="
