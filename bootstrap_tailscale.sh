@@ -21,7 +21,8 @@ set -euo pipefail
 #  환경값 (★ 수업 mgmt 가 172.16.8.0/24 를 이미 광고 중이라
 #           proj-mgmt 는 충돌 방지를 위해 172.16.1.0/24 를 광고한다)
 # ──────────────────────────────────────────────────────────────────────
-VMWARE_CIDR="172.16.1.0/24"          # proj-mgmt host-only 대역 (서브넷 광고용)
+VMWARE_CIDR="172.16.8.0/24"          # proj-mgmt host-only 대역 (서브넷 광고용)
+#VMWARE_CIDR="192.168.64.0/24".      # [박정은] 로컬 대역
 SYSCTL_CONF="/etc/sysctl.d/99-tailscale.conf"
 
 # Tailscale 에 등록할 이 머신의 hostname

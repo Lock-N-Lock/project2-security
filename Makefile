@@ -17,7 +17,7 @@ endif
 TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
-.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db service
+.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app service build-push
 
 # 기본 실행 (make)
 help:
@@ -104,15 +104,57 @@ deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
 	@APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}'); \
 	if [ -n "$$APP_IP" ]; then ping -c 3 $$APP_IP >/dev/null 2>&1 || true; fi
 
+deploy-app:   ## App EC2에 docker run 기반 앱 배포
+	@DB_HOST_MAIN=$$(cd $(TF_DIR) && terraform output -raw db_private_ip); \
+	DB_HOST_REPLICA=$$(tailscale ip -4 2>/dev/null | head -1); \
+	APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}' | head -1); \
+	if [ -z "$$APP_IP" ]; then echo "❌ App IP 없음"; exit 1; fi; \
+	echo "✅ Deploy to $$APP_IP"; \
+	scp -i infra/terraform/lb-key.pem -r docker ec2-user@$$APP_IP:/tmp/docker; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "sudo mkdir -p /opt/lockbank && sudo rm -rf /opt/lockbank/docker && sudo mv /tmp/docker /opt/lockbank/docker && sudo chown -R ec2-user:ec2-user /opt/lockbank/docker"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker rm -f lb-fastapi lb-security-nginx lb-nginx-exporter lb-promtail lb-fail2ban lockbank-app fastapi lockbank-nginx || true"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker network create lb-net || true"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker volume create nginx_logs || true"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker pull $(DOCKER_USER)/lock-app:latest && docker pull $(DOCKER_USER)/lock-security-nginx:latest && docker pull $(DOCKER_USER)/lock-fail2ban:latest && docker pull nginx/nginx-prometheus-exporter:latest && docker pull grafana/promtail:2.9.8"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-fastapi \
+		-e DB_HOST_MAIN=$$DB_HOST_MAIN \
+		-e DB_HOST_REPLICA=$$DB_HOST_REPLICA \
+		-e DB_USER=lb-user \
+		-e DB_PASSWORD=lb-user \
+		-e DB_NAME=lb-db \
+		-e SECRET_KEY=change-me \
+		$(DOCKER_USER)/lock-app:latest"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-security-nginx \
+		-p 80:80 \
+		-v nginx_logs:/var/log/nginx \
+		$(DOCKER_USER)/lock-security-nginx:latest"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-nginx-exporter \
+		-p 9113:9113 \
+		nginx/nginx-prometheus-exporter:latest \
+		-nginx.scrape-uri=http://lb-security-nginx/stub_status"; \
+	#ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --name lb-fail2ban \
+	#	--network host \
+	#	--cap-add NET_ADMIN \
+	#	--cap-add NET_RAW \
+	#	-v nginx_logs:/var/log/nginx:ro \
+	#	-v /opt/lockbank/docker/fail2ban:/data \
+	#	-e TZ=Asia/Seoul \
+	#	-e F2B_LOG_LEVEL=INFO \
+	#	$(DOCKER_USER)/lock-fail2ban:latest"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-promtail \
+		-v nginx_logs:/var/log/nginx:ro \
+		-v /opt/lockbank/docker/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro \
+		-e LOKI_HOST=$$DB_HOST_REPLICA \
+		grafana/promtail:2.9.8 \
+		-config.file=/etc/promtail/promtail-config.yaml \
+		-config.expand-env=true"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker ps -a"
+
 build-push:
-	@mkdir -p $(CURDIR)/.docker_config
-	@echo "🚀 1단계: 로컬에서 FastAPI Docker 이미지 빌드 ($(DOCKER_USER)/lock-app:latest)..."
-	docker build -t $(DOCKER_USER)/lock-app:latest ./docker
-	@echo "🚀 Docker Hub에 이미지 푸시..."
-	docker push $(DOCKER_USER)/lock-app:latest
+	@DOCKER_USER=$(DOCKER_USER) ./scripts/build-push-image.sh
 
 ## 인프라 + DB까지 한 번에
-service: build-push apply-auto deploy-db
+service: build-push apply-auto deploy-db deploy-app
 
 output:
 	@echo ""
