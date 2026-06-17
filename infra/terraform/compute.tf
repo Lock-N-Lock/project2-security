@@ -172,8 +172,8 @@ resource "aws_launch_template" "app" {
       --hostname="$HN" \
       #--ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
 
-    # 2) Docker Compose 배포 준비
-    dnf install -y docker
+    # 2) Docker & fail2ban 설치
+    dnf install -y docker fail2ban iptables-services
     systemctl enable --now docker
     usermod -aG docker ec2-user
 
