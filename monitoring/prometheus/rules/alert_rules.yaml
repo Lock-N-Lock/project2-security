@@ -7,8 +7,8 @@ groups:
       # AWS App ASG 인스턴스 scrape 검증 후 활성화
       #
       # BankAppDown:
-      # - LockBank FastAPI /metrics endpoint 장애
-      # - app-nodes job의 8080 포트 scrape 상태로 검증
+      # - LockBank /health endpoint 장애
+      # - FastAPI 8080 직접 노출 없이 Nginx 80 경유 health probe로 검증
       # - Alertmanager를 통해 Telegram 알림을 전송하고,
       #   Recovery Controller가 복구를 시도한다.
       #
@@ -19,15 +19,15 @@ groups:
       # ==================================================
 
       - alert: BankAppDown
-        expr: up{job="app-nodes", instance=~".*:8080"} == 0
-        for: 5s
+        expr: probe_success{job="app-health"} == 0
+        for: 10s
         labels:
           severity: critical
           category: user_service
           service: lockbank-app
         annotations:
           summary: LockBank App Down
-          description: LockBank application target is down.
+          description: LockBank /health probe via Nginx is failed.
 
       # - alert: AppNodeExporterDown
       #   expr: up{job="app-nodes", instance=~".*:9100"} == 0

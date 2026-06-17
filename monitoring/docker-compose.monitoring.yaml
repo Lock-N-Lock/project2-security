@@ -85,6 +85,15 @@ services:
     networks:
       - monitoring
 
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: lb-monitoring-blackbox-exporter
+    restart: unless-stopped
+    ports:
+      - "9116:9115"
+    networks:
+      - monitoring
+
   loki:
     image: grafana/loki:2.9.8
     container_name: lb-monitoring-loki
@@ -152,7 +161,7 @@ services:
     environment:
       TS_API_KEY: ${TS_API_KEY} # monitoring/.env (★gitignore)
       TS_TAILNET: ${TS_TAILNET:--}
-      EXPORTER_PORTS: "9100,8080"
+      EXPORTER_PORTS: "9113"
       DB_PORTS: "9100,9187"
     restart: unless-stopped
     networks:

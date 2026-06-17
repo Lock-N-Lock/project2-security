@@ -45,6 +45,26 @@ scrape_configs:
       - source_labels: [__meta_ts_hostname]
         target_label: ts_host        # ★ instance(ip:port) 유지, hostname은 별도 라벨
 
+
+  - job_name: app-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    http_sd_configs:
+      - url: http://tailscale-sd:9999/app-targets
+        refresh_interval: 30s
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        replacement: 'http://${1}/health'
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: target
+      - source_labels: [__meta_ts_hostname]
+        target_label: ts_host
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+
   - job_name: db-node
     http_sd_configs:
       - url: http://tailscale-sd:9999/db-targets

@@ -105,14 +105,14 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "max(up{job=\"app-nodes\", instance=~\".*:8080\"})",
+              "expr": "max(probe_success{job=\"app-health\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Application Status",
+          "title": "Application Health",
           "type": "stat"
         },
         {
