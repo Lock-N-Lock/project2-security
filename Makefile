@@ -11,13 +11,13 @@ export DOCKER_CONFIG := $(CURDIR)/.docker_config
 DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' $(DOCKER_CONFIG)/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
 
 ifeq ($(DOCKER_USER),)
-  DOCKER_USER := lockandlock
+  DOCKER_USER := zeongni
 endif
 
 TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
-.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app service build-push
+.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app deploy-app-blue deploy-app-green deploy-app-color service build-push
 
 # 기본 실행 (make)
 help:
@@ -48,7 +48,7 @@ help:
 
 # ── 초기 설정 ─────────────────────────────────────────────
 setup:
-	@chmod +x setup.sh check.sh
+	@chmod +x setup.sh check.sh scripts/deploy-app.sh scripts/set-fail2ban.sh
 	./setup.sh
 
 check:
@@ -104,51 +104,30 @@ deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
 	@APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}'); \
 	if [ -n "$$APP_IP" ]; then ping -c 3 $$APP_IP >/dev/null 2>&1 || true; fi
 
-deploy-app:   ## App EC2에 docker run 기반 앱 배포
+deploy-app: deploy-app-blue
+
+deploy-app-green:
+	@$(MAKE) deploy-app-color COLOR=green
+
+deploy-app-blue:
+	@$(MAKE) deploy-app-color COLOR=blue
+
+deploy-app-color:
 	@DB_HOST_MAIN=$$(cd $(TF_DIR) && terraform output -raw db_private_ip); \
 	DB_HOST_REPLICA=$$(tailscale ip -4 2>/dev/null | head -1); \
-	APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}' | head -1); \
-	if [ -z "$$APP_IP" ]; then echo "❌ App IP 없음"; exit 1; fi; \
-	echo "✅ Deploy to $$APP_IP"; \
-	scp -i infra/terraform/lb-key.pem -r docker ec2-user@$$APP_IP:/tmp/docker; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "sudo mkdir -p /opt/lockbank && sudo rm -rf /opt/lockbank/docker && sudo mv /tmp/docker /opt/lockbank/docker && sudo chown -R ec2-user:ec2-user /opt/lockbank/docker"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker rm -f lb-fastapi lb-security-nginx lb-nginx-exporter lb-promtail lb-fail2ban lockbank-app fastapi lockbank-nginx || true"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker network create lb-net || true"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker volume create nginx_logs || true"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker pull $(DOCKER_USER)/lock-app:latest && docker pull $(DOCKER_USER)/lock-security-nginx:latest && docker pull $(DOCKER_USER)/lock-fail2ban:latest && docker pull nginx/nginx-prometheus-exporter:latest && docker pull grafana/promtail:2.9.8"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-fastapi \
-		-e DB_HOST_MAIN=$$DB_HOST_MAIN \
-		-e DB_HOST_REPLICA=$$DB_HOST_REPLICA \
-		-e DB_USER=lb-user \
-		-e DB_PASSWORD=lb-user \
-		-e DB_NAME=lb-db \
-		-e SECRET_KEY=change-me \
-		$(DOCKER_USER)/lock-app:latest"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-security-nginx \
-		-p 80:80 \
-		-v nginx_logs:/var/log/nginx \
-		$(DOCKER_USER)/lock-security-nginx:latest"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-nginx-exporter \
-		-p 9113:9113 \
-		nginx/nginx-prometheus-exporter:latest \
-		-nginx.scrape-uri=http://lb-security-nginx/stub_status"; \
-	#ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --name lb-fail2ban \
-	#	--network host \
-	#	--cap-add NET_ADMIN \
-	#	--cap-add NET_RAW \
-	#	-v nginx_logs:/var/log/nginx:ro \
-	#	-v /opt/lockbank/docker/fail2ban:/data \
-	#	-e TZ=Asia/Seoul \
-	#	-e F2B_LOG_LEVEL=INFO \
-	#	$(DOCKER_USER)/lock-fail2ban:latest"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker run -d --restart=always --net lb-net --name lb-promtail \
-		-v nginx_logs:/var/log/nginx:ro \
-		-v /opt/lockbank/docker/promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro \
-		-e LOKI_HOST=$$DB_HOST_REPLICA \
-		grafana/promtail:2.9.8 \
-		-config.file=/etc/promtail/promtail-config.yaml \
-		-config.expand-env=true"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "docker ps -a"
+	INSTANCE_ID=$$(aws ec2 describe-instances \
+		--filters "Name=tag:Color,Values=$(COLOR)" "Name=instance-state-name,Values=running" \
+		--query "Reservations[0].Instances[0].InstanceId" \
+		--output text); \
+	if [ "$$INSTANCE_ID" = "None" ] || [ -z "$$INSTANCE_ID" ]; then echo "❌ $(COLOR) App Instance 없음"; exit 1; fi; \
+	APP_IP=$$(tailscale status | grep "lb-app-$$INSTANCE_ID" | grep -v "offline" | awk '{print $$1}' | head -1); \
+	if [ -z "$$APP_IP" ]; then echo "❌ $(COLOR) App Tailscale IP 없음"; exit 1; fi; \
+	echo "✅ Deploy $(COLOR) App $$INSTANCE_ID to $$APP_IP"; \
+	scp -o StrictHostKeyChecking=no -i infra/terraform/lb-key.pem -r docker scripts ec2-user@$$APP_IP:/tmp/; \
+	ssh -o StrictHostKeyChecking=no -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "sudo mkdir -p /opt/lockbank && sudo rm -rf /opt/lockbank/docker /opt/lockbank/scripts && sudo mv /tmp/docker /opt/lockbank/docker && sudo mv /tmp/scripts /opt/lockbank/scripts && sudo chown -R ec2-user:ec2-user /opt/lockbank"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "chmod +x /opt/lockbank/scripts/*.sh"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "DOCKER_USER=$(DOCKER_USER) DB_HOST_MAIN=$$DB_HOST_MAIN DB_HOST_REPLICA=$$DB_HOST_REPLICA bash /opt/lockbank/scripts/deploy-app.sh"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "bash /opt/lockbank/scripts/set-fail2ban.sh"
 
 build-push:
 	@DOCKER_USER=$(DOCKER_USER) ./scripts/build-push-image.sh
