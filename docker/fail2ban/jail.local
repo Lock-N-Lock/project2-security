@@ -8,7 +8,7 @@
 [nginx-login]
 enabled = true
 filter = nginx-login
-logpath = /var/log/nginx/access.log
+logpath = /var/log/nginx-container/access.log
 maxretry = 5
 findtime = 300
 bantime = 3600
@@ -18,7 +18,7 @@ action = iptables-multiport[name=nginx-login, port="http,https", protocol=tcp]
 [nginx-rate-limit]
 enabled = true
 filter = nginx-rate-limit
-logpath = /var/log/nginx/access.log
+logpath = /var/log/nginx-container/access.log
 maxretry = 20
 findtime = 60
 bantime = 1800

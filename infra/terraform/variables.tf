@@ -192,6 +192,10 @@ variable "db_name" {
   default     = "lb-db"
 }
 
+variable "docker_user" {
+  type    = string
+  default = "lockandlock"
+}
 variable "secret_key" {
   description = "컨테이너 보안키"
   type        = string
