@@ -19,7 +19,7 @@ groups:
       # ==================================================
 
       - alert: BankAppDown
-        expr: probe_success{job="app-health"} == 0
+        expr: max(probe_success{job="app-health"}) == 0
         for: 10s
         labels:
           severity: critical
