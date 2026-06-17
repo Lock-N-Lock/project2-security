@@ -14,7 +14,7 @@ LABEL role="reverse-proxy-rate-limit-json-log"
 # 기존 설정 제거
 RUN rm -f /etc/nginx/nginx.conf \
     && rm -f /etc/nginx/conf.d/default.conf \
-    && mkdir -p /var/log/nginx
+    && mkdir -p /var/log/nginx \
     && rm -f /var/log/nginx/access.log \
     && rm -f /var/log/nginx/error.log \
     && touch /var/log/nginx/access.log \

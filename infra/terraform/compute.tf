@@ -151,41 +151,15 @@ resource "aws_launch_template" "app" {
 
   vpc_security_group_ids = [aws_security_group.app_sg.id]
 
-  # 최소 부트스트랩(Docker). 앱 배포는 B/C 트랙이 Ansible/Actions 로 수행.
-  user_data = base64encode(<<-USERDATA
-    #!/bin/bash
-    set -uxo pipefail
-
-    # 1) Tailscale 노드 가입 (node-to-node, accept-routes=false)
-    #    네트워크 egress 준비될 때까지 설치 재시도 + IMDSv2 토큰 재시도 (early-boot 안전)
-    dnf install -y iptables
-    until curl -fsSL https://tailscale.com/install.sh | sh; do sleep 3; done
-    systemctl enable --now tailscaled
-    until TOKEN=$(curl -sf -X PUT "http://169.254.169.254/latest/api/token" \
-      -H "X-aws-ec2-metadata-token-ttl-seconds: 300"); do sleep 2; done
-    IID=$(curl -sf -H "X-aws-ec2-metadata-token: $TOKEN" \
-      http://169.254.169.254/latest/meta-data/instance-id)
-    HN="${var.project}-app-$IID"
-    tailscale up \
-      --authkey=${tailscale_tailnet_key.app_join.key} \
-      --accept-routes=false \
-      --hostname="$HN" \
-      #--ssh                       # 선택: tailscale ssh break-glass (ACL ssh 섹션 필요)
-
-    # 2) Docker & fail2ban 설치
-    dnf install -y docker fail2ban iptables-services
-    systemctl enable --now docker
-    usermod -aG docker ec2-user
-
-    mkdir -p /opt/lockbank/docker
-    chown -R ec2-user:ec2-user /opt/lockbank
-
-    # 3) 익스포터 — ★0.0.0.0 바인딩이어야 100.x로 긁힘 (B 트랙)
-    docker rm -f node-exporter || true
-    docker run -d --restart=always --net=host --name node-exporter \
-      quay.io/prometheus/node-exporter
-    USERDATA
-  )
+  # App EC2 부팅 시 Tailscale 가입, Docker 설치, bootstrap 이미지에서 배포 스크립트 추출 후 자동 실행
+  user_data = base64encode(templatefile("${path.module}/user_data_app.sh", {
+    project         = var.project
+    app_join_key    = tailscale_tailnet_key.app_join.key
+    docker_user     = var.docker_user
+    db_host_main    = aws_instance.db.private_ip
+    db_host_replica = var.db_host_replica
+    loki_host       = var.db_host_replica
+}))
 
   tag_specifications {
     resource_type = "instance"
