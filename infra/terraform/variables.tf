@@ -188,3 +188,8 @@ variable "db_name" {
   description = "DB 이름"
   type        = string
 }
+
+variable "docker_user" {
+  type    = string
+  default = "lockandlock"
+}

@@ -17,7 +17,7 @@ endif
 TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
-.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app deploy-app-blue deploy-app-green deploy-app-color service build-push
+.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app service build-push build-push-bootstrap
 
 # 기본 실행 (make)
 help:
@@ -71,6 +71,7 @@ define TF_WITH_TS
 	echo "✅ Detected Replica DB Tailscale IP: $$REPLICA_TS_IP"; \
 	export TF_VAR_db_host_replica=$$REPLICA_TS_IP; \
 	export TF_VAR_app_image=$(DOCKER_USER)/lock-app:latest; \
+	export TF_VAR_docker_user=$(DOCKER_USER); \
 	cd $(TF_DIR) &&
 endef
 
@@ -104,36 +105,30 @@ deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
 	@APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}'); \
 	if [ -n "$$APP_IP" ]; then ping -c 3 $$APP_IP >/dev/null 2>&1 || true; fi
 
-deploy-app: deploy-app-blue
 
-deploy-app-green:
-	@$(MAKE) deploy-app-color COLOR=green
-
-deploy-app-blue:
-	@$(MAKE) deploy-app-color COLOR=blue
-
-deploy-app-color:
+deploy-app:
 	@DB_HOST_MAIN=$$(cd $(TF_DIR) && terraform output -raw db_private_ip); \
 	DB_HOST_REPLICA=$$(tailscale ip -4 2>/dev/null | head -1); \
-	INSTANCE_ID=$$(aws ec2 describe-instances \
-		--filters "Name=tag:Color,Values=$(COLOR)" "Name=instance-state-name,Values=running" \
-		--query "Reservations[0].Instances[0].InstanceId" \
-		--output text); \
-	if [ "$$INSTANCE_ID" = "None" ] || [ -z "$$INSTANCE_ID" ]; then echo "❌ $(COLOR) App Instance 없음"; exit 1; fi; \
-	APP_IP=$$(tailscale status | grep "lb-app-$$INSTANCE_ID" | grep -v "offline" | awk '{print $$1}' | head -1); \
-	if [ -z "$$APP_IP" ]; then echo "❌ $(COLOR) App Tailscale IP 없음"; exit 1; fi; \
-	echo "✅ Deploy $(COLOR) App $$INSTANCE_ID to $$APP_IP"; \
+	APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}' | head -1); \
+	if [ -z "$$APP_IP" ]; then echo "❌ App IP 없음"; exit 1; fi; \
+	echo "✅ Deploy to $$APP_IP"; \
 	scp -o StrictHostKeyChecking=no -i infra/terraform/lb-key.pem -r docker scripts ec2-user@$$APP_IP:/tmp/; \
 	ssh -o StrictHostKeyChecking=no -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "sudo mkdir -p /opt/lockbank && sudo rm -rf /opt/lockbank/docker /opt/lockbank/scripts && sudo mv /tmp/docker /opt/lockbank/docker && sudo mv /tmp/scripts /opt/lockbank/scripts && sudo chown -R ec2-user:ec2-user /opt/lockbank"; \
 	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "chmod +x /opt/lockbank/scripts/*.sh"; \
-	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "DOCKER_USER=$(DOCKER_USER) DB_HOST_MAIN=$$DB_HOST_MAIN DB_HOST_REPLICA=$$DB_HOST_REPLICA bash /opt/lockbank/scripts/deploy-app.sh"; \
+	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "DOCKER_USER=$(DOCKER_USER) DB_HOST_MAIN=$$DB_HOST_MAIN DB_HOST_REPLICA=$$DB_HOST_REPLICA LOKI_HOST=$$DB_HOST_REPLICA bash /opt/lockbank/scripts/deploy-app.sh"; \
 	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "bash /opt/lockbank/scripts/set-fail2ban.sh"
 
 build-push:
 	@DOCKER_USER=$(DOCKER_USER) ./scripts/build-push-image.sh
 
+build-push-bootstrap:
+	docker build \
+	-f docker/bootstrap/Dockerfile \
+	-t $(DOCKER_USER)/lock-bootstrap:latest .
+	docker push $(DOCKER_USER)/lock-bootstrap:latest
+
 ## 인프라 + DB까지 한 번에
-service: build-push apply-auto deploy-db deploy-app
+service: build-push build-push-bootstrap apply-auto deploy-db
 
 output:
 	@echo ""
