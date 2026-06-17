@@ -81,6 +81,7 @@ jobs:
       # 깃허브 API 변경점이 반영된 최신 안정 버전으로 교체합니다.
         uses: zaproxy/action-baseline@v0.14.0
         with:
+          token: ${{ secrets.GITHUB_TOKEN }}
           # AWS 로드밸런서(ALB) DNS 주소나 연동된 도메인 주소
           target: ${{ env.APP_URL }}
           
@@ -88,3 +89,4 @@ jobs:
           # 처음 테스트할 때는 어떤 결과가 나오는지 보기 위해 false로 두고 관측해도 좋습니다.
           fail_action: false
           issue_title: "🛡️ 보안 취약점 점검 리포트 (OWASP ZAP)"
+          environment: "production"
