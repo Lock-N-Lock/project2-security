@@ -195,4 +195,5 @@ variable "db_name" {
 variable "secret_key" {
   description = "컨테이너 보안키"
   type        = string
+  sensitive   = true
 }
