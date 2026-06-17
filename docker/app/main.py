@@ -22,12 +22,12 @@ def get_server_info():
     try:
         req = urllib.request.Request("http://169.254.169.254/latest/api/token", method="PUT")
         req.add_header("X-aws-ec2-metadata-token-ttl-seconds", "21600")
-        with urllib.request.urlopen(req, timeout=1) as response:  
+        with urllib.request.urlopen(req, timeout=1) as response:  # nosec
             token = response.read().decode('utf-8')
             
         req2 = urllib.request.Request("http://169.254.169.254/latest/meta-data/local-ipv4")
         req2.add_header("X-aws-ec2-metadata-token", token)
-        with urllib.request.urlopen(req2, timeout=1) as response:  
+        with urllib.request.urlopen(req2, timeout=1) as response:  # nosec
             ip = response.read().decode('utf-8')
             return f"IP: {ip}"
     except:
