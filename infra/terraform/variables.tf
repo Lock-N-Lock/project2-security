@@ -171,11 +171,13 @@ variable "app_image" {
 variable "db_host_replica" {
   description = "Replica DB의 IP (Tailscale IP)"
   type        = string
+  default     = "127.0.0.1"
 }
 
 variable "db_user" {
   description = "DB 사용자 이름"
   type        = string
+  default     = "lb-user"
 }
 
 variable "db_password" {
@@ -187,9 +189,14 @@ variable "db_password" {
 variable "db_name" {
   description = "DB 이름"
   type        = string
+  default     = "lb-db"
 }
 
 variable "docker_user" {
   type    = string
   default = "lockandlock"
+}
+variable "secret_key" {
+  description = "컨테이너 보안키"
+  type        = string
 }
