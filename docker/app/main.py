@@ -167,7 +167,8 @@ def login(request: Request, response: Response, username: str = Form(...), passw
         return redirect
 
     except Exception as e:
-        return RedirectResponse(url=f"/login?error={str(e)}", status_code=302)
+        logger.error(f"[SYSTEM ERROR] Login process failure: {str(e)}")
+        return RedirectResponse(url="/login?error=Internal Server Error. Please try again later.", status_code=302)
 
 @app.get("/logout")
 def logout():
