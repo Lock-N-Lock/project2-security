@@ -8,7 +8,7 @@ query_count() {
   local q="$1"
   curl -G -s "${LOKI}/loki/api/v1/query" \
     --data-urlencode "query=${q}" \
-  | jq -r '.data.result[0].value[1] // "0"'
+  | jq -r '.data.result[0] | if . then .value[1] else "0" end'
 }
 
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
