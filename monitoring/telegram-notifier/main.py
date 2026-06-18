@@ -147,13 +147,10 @@ def build_message(payload: dict[str, Any]) -> str:
 
 def build_recovery_failed_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
-    target = payload.get("target", "unknown")
-    retry = payload.get("retry", "unknown")
-    failure_stage = payload.get("failure_stage", "unknown")
-    reason = payload.get(
-        "reason",
-        "Service health verification failed after recovery action"
-    )
+    target = payload.get("target") or "unknown"
+    retry = payload.get("retry") or "unknown"
+    failure_stage = payload.get("failure_stage") or "unknown"
+    reason = payload.get("reason") or "Service health verification failed after recovery action"
 
     return "\n".join(
         [
@@ -171,11 +168,11 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
 
 def build_recovery_success_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
-    target = payload.get("target", "unknown")
-    verify_url = payload.get("verify_url", "unknown")
-    started_at = payload.get("started_at", "unknown")
-    recovered_at = payload.get("recovered_at", "unknown")
-    duration_seconds = payload.get("duration_seconds", "unknown")
+    target = payload.get("target") or "unknown"
+    verify_url = payload.get("verify_url") or "unknown"
+    started_at = payload.get("started_at") or "unknown"
+    recovered_at = payload.get("recovered_at") or "unknown"
+    duration_seconds = payload.get("duration_seconds") or "unknown"
 
     return "\n".join(
         [
