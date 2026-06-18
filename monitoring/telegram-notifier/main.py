@@ -149,15 +149,20 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
     target = payload.get("target", "unknown")
     retry = payload.get("retry", "unknown")
-    reason = payload.get("reason", "Recovery failed after retries")
+    failure_stage = payload.get("failure_stage", "unknown")
+    reason = payload.get(
+        "reason",
+        "Service health verification failed after recovery action"
+    )
 
     return "\n".join(
         [
-            "❌ 자동 복구 실패",
+            "❌ 자동 복구 검증 실패",
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
             f"Retry: {retry}",
+            f"Failure Stage: {failure_stage}",
             "",
             f"결과: {reason}",
             "운영자 확인이 필요합니다.",
@@ -168,6 +173,9 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
     target = payload.get("target", "unknown")
     verify_url = payload.get("verify_url", "unknown")
+    started_at = payload.get("started_at", "unknown")
+    recovered_at = payload.get("recovered_at", "unknown")
+    duration_seconds = payload.get("duration_seconds", "unknown")
 
     return "\n".join(
         [
@@ -175,7 +183,13 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
+            "",
+            f"Started At: {started_at}",
+            f"Recovered At: {recovered_at}",
+            f"Duration: {duration_seconds}s",
+            "",
             f"Verify: {verify_url}",
+            "Result: Success",
             "",
             "결과: 서비스가 정상 상태로 복구되었습니다.",
         ]

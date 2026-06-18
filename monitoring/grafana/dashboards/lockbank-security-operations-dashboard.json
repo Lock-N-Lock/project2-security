@@ -105,14 +105,14 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "max(up{job=\"app-nodes\", instance=~\".*:8080\"})",
+              "expr": "max(probe_success{job=\"app-health\"})",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Application Status",
+          "title": "Application Health",
           "type": "stat"
         },
         {
@@ -190,7 +190,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "pg_up",
+              "expr": "max(pg_up{job=\"db-node\", ts_host=\"lb-db\"} == 1)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -325,7 +325,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(increase(recovery_success_total[24h]))",
+              "expr": "sum(increase(recovery_success_total[$__range])) or vector(0)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,
@@ -354,10 +354,10 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Owner: D Track\n\nData Source: Loki\n\nStatus: Active\n\nPurpose: Operational and security events timeline.\n\nExpected log sources:\nrecovery-logs\ncritical-logs\nsecurity-logs\nfail2ban-logs\nnginx-logs\ngithub-actions\n\nFlow:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
+          "description": "Status: Active / Pending Mixed\n\nCurrent Active Sources:\n- recovery-logs\n- critical-logs\n\nPending Integration:\n- fail2ban-logs\n- nginx-logs\n- github-actions\n\nPurpose:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
           "gridPos": {
             "h": 8,
-            "w": 12,
+            "w": 24,
             "x": 0,
             "y": 2
           },
@@ -403,10 +403,10 @@
       "panels": [
         {
           "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize login attack attempts through HTTP 401 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nHTTP 401 in /var/log/nginx/access.log",
+          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - AWS Nginx access log integration required\n\nPurpose: Visualize login attack attempts through HTTP 401 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nHTTP 401 in /var/log/nginx/access.log",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -483,13 +483,14 @@
           "targets": [
             {
               "datasource": {
-                "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \" 401 \" [5m]))",
-              "queryType": "range",
+              "expr": "sum(nginx_status_401_count)",
+              "instant": false,
               "legendFormat": "HTTP 401",
+              "range": true,
               "refId": "A"
             }
           ],
@@ -498,10 +499,10 @@
         },
         {
           "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize login failure attempts through /login HTTP 401 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nuri=/login and status=401 in /var/log/nginx/access.log",
+          "description": "Owner: E Track\n\nData Source: Prometheus\n\nStatus: Active\n\nPurpose: Visualize login failure attempts through /login HTTP 401 responses.\n\nMetric source:\nnginx-log-metrics\n\nMetric:\nnginx_login_401_count\n\nSource log:\nnginx-access",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -550,13 +551,14 @@
           "targets": [
             {
               "datasource": {
-                "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \"\\\"uri\\\":\\\"/login\" |= \"\\\"status\\\":401\" [5m]))",
-              "queryType": "range",
+              "expr": "nginx_login_401_count",
+              "instant": true,
               "legendFormat": "Login Failure",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -565,10 +567,10 @@
         },
         {
           "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - #22 Nginx access log integration required\n\nPurpose: Visualize API Flooding / Rate Limit events through HTTP 429 responses.\n\nExpected log source:\nnginx-access\n\nExpected pattern:\nHTTP 429 in /var/log/nginx/access.log",
+          "description": "Owner: E Track\n\nData Source: Prometheus\n\nStatus: Active\n\nPurpose: Visualize API Flooding / Rate Limit events through HTTP 429 responses.\n\nMetric source:\nnginx-log-metrics\n\nMetric:\nnginx_status_429_count\n\nSource log:\nnginx-access\n\nPattern:\nHTTP 429 in /var/log/nginx/access.log",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -645,13 +647,14 @@
           "targets": [
             {
               "datasource": {
-                "type": "loki",
-                "uid": "P8E80F9AEF21F6940"
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(count_over_time({job=\"nginx-access\"} |= \" 429 \" [5m]))",
-              "queryType": "range",
+              "expr": "sum(nginx_status_429_count)",
+              "instant": false,
               "legendFormat": "HTTP 429",
+              "range": true,
               "refId": "A"
             }
           ],
