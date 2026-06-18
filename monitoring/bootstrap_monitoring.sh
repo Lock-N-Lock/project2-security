@@ -277,6 +277,7 @@ RESET_GRAFANA="${RESET_GRAFANA:-false}"
 
 if [ "$RESET_GRAFANA" = "true" ]; then
     echo "[WARN] Grafana volume 초기화 진행"
+
     docker compose \
         --env-file .env \
         --env-file .env.generated \
@@ -289,7 +290,7 @@ if [ "$RESET_GRAFANA" = "true" ]; then
         -f docker-compose.monitoring.yaml \
         rm -f grafana || true
 
-    docker volume ls -q | grep -E 'grafana' | xargs -r docker volume rm
+    docker volume rm monitoring_grafana_data >/dev/null 2>&1 || true
 fi
 
 docker compose \
