@@ -124,6 +124,15 @@ fi
 
 APP_HEALTH_URL="http://${APP_IP}/health"
 
+MONITORING_METRICS_HOST=$(tailscale ip -4 | head -1)
+
+if [ -z "$MONITORING_METRICS_HOST" ]; then
+    echo "[ERROR] Monitoring Tailscale IP를 찾을 수 없습니다."
+    exit 1
+fi
+
+NGINX_LOG_METRICS_URL="http://${MONITORING_METRICS_HOST}:9105/nginx_log_metrics.prom"
+
 export AWS_ACCESS_KEY_ID="$(awk -F= '$1=="AWS_ACCESS_KEY_ID"{print substr($0, index($0,$2)); exit}' .env)"
 export AWS_SECRET_ACCESS_KEY="$(awk -F= '$1=="AWS_SECRET_ACCESS_KEY"{print substr($0, index($0,$2)); exit}' .env)"
 export AWS_DEFAULT_REGION="$(awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env)"
@@ -186,6 +195,8 @@ generated_vars=(
     AWS_GREEN_ASG_NAME
     AWS_APP_PRIVATE_IP
     AWS_BASTION_PUBLIC_IP
+    MONITORING_METRICS_HOST
+    NGINX_LOG_METRICS_URL
 )
 
 for var in "${generated_vars[@]}"; do
@@ -207,7 +218,46 @@ AWS_GREEN_ASG_NAME=${AWS_GREEN_ASG_NAME}
 AWS_APP_PRIVATE_IP=${AWS_APP_PRIVATE_IP}
 AWS_BASTION_PUBLIC_IP=${AWS_BASTION_PUBLIC_IP}
 AWS_SSH_KEY_PATH=/app/ssh/lb-key.pem
+MONITORING_METRICS_HOST=${MONITORING_METRICS_HOST}
+NGINX_LOG_METRICS_URL=${NGINX_LOG_METRICS_URL}
 EOF
+
+export MONITORING_METRICS_HOST
+
+python3 - <<'PY'
+from pathlib import Path
+import os
+import sys
+
+path = Path("prometheus/prometheus.yaml")
+
+start = "  # BEGIN AUTO GENERATED: nginx-log-metrics"
+end = "  # END AUTO GENERATED: nginx-log-metrics"
+
+text = path.read_text()
+
+if start not in text or end not in text:
+    print("[ERROR] prometheus.yaml에 nginx-log-metrics 자동 생성 마커가 없습니다.")
+    print("[ERROR] 아래 두 줄을 scrape_configs 하단에 추가해야 합니다.")
+    print(start)
+    print(end)
+    sys.exit(1)
+
+block = f'''{start}
+  - job_name: nginx-log-metrics
+    metrics_path: /nginx_log_metrics.prom
+    static_configs:
+      - targets:
+          - {os.environ["MONITORING_METRICS_HOST"]}:9105
+{end}'''
+
+before, rest = text.split(start, 1)
+_, after = rest.split(end, 1)
+
+path.write_text(before + block + after)
+PY
+
+echo "[OK] prometheus.yaml nginx-log-metrics scrape job 갱신 완료"
 
 echo "[OK] .env.generated 생성 완료"
 cat .env.generated
@@ -277,6 +327,9 @@ echo "SNS_TOPIC           = ${SNS_TOPIC_NAME}"
 echo "SNS_TOPIC_ARN       = ${SNS_TOPIC_ARN}"
 echo "LAMBDA_FUNCTION     = ${LAMBDA_FUNCTION_NAME}"
 echo "LAMBDA_ARN          = ${LAMBDA_ARN}"
+
+echo "MONITORING_METRICS_HOST = ${MONITORING_METRICS_HOST}"
+echo "NGINX_LOG_METRICS_URL   = ${NGINX_LOG_METRICS_URL}"
 
 echo ""
 echo "============================================="

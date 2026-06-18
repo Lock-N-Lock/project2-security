@@ -179,7 +179,7 @@ resource "aws_autoscaling_group" "blue" {
   desired_capacity          = var.asg_desired
   vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.blue.arn]
-  health_check_type         = "ELB"
+  health_check_type         = "EC2"
   health_check_grace_period = 300 # ← 이 줄 추가 (교체 인스턴스 부팅 여유, 데모용 300s)
 
   launch_template {
@@ -204,7 +204,7 @@ resource "aws_autoscaling_group" "green" {
   desired_capacity          = 0
   vpc_zone_identifier       = aws_subnet.app_subnet[*].id
   target_group_arns         = [aws_lb_target_group.green.arn]
-  health_check_type         = "ELB"
+  health_check_type         = "EC2"
   health_check_grace_period = 300 # ◀ 이 줄을 추가하여 초기 컨테이너 구동 시간 확보
   launch_template {
     id      = aws_launch_template.app.id

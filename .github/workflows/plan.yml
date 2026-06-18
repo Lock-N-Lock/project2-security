@@ -1,5 +1,3 @@
-# ~/project2-security/.github/workflows/plan.yml
-
 name: "Terraform Plan & Docker 빌드"
 on:
   push: # 자동 push

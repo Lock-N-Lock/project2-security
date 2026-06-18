@@ -105,6 +105,7 @@ deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
 	@APP_IP=$$(tailscale status | grep -E "lb-app-i-[0-9a-f]+" | grep -v "offline" | awk '{print $$1}'); \
 	if [ -n "$$APP_IP" ]; then ping -c 3 $$APP_IP >/dev/null 2>&1 || true; fi
 
+
 deploy-app:
 	@DB_HOST_MAIN=$$(cd $(TF_DIR) && terraform output -raw db_private_ip); \
 	DB_HOST_REPLICA=$$(tailscale ip -4 2>/dev/null | head -1); \
