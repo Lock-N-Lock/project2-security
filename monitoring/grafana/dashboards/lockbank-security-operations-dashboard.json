@@ -354,7 +354,7 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Status: Active / Pending Mixed\n\nCurrent Active Sources:\n- recovery-logs\n- critical-logs\n\nPending Integration:\n- fail2ban-logs\n- nginx-logs\n- github-actions\n\nPurpose:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
+          "description": "Status: Active / Pending Mixed\n\nCurrent Active Sources:\n- recovery-logs\n- critical-logs\n\nPlanned Sources:\n- security-events\n- fail2ban-logs\n- nginx-logs\n- github-actions\n\nEvent Types:\n- Recovery Started / Completed / Failed\n- Fail2Ban Ban / Unban\n- RateLimitTriggered\n- HighLoginFailureRate\n- Deploy Started / Completed\n- Security Scan Result\n- Rollback Executed\n\nPurpose:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -379,7 +379,7 @@
                 "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "{job=~\"recovery-logs|critical-logs|security-logs|fail2ban-logs|nginx-logs|github-actions\"}",
+              "expr": "{job=~\"recovery-logs|critical-logs|security-events|github-actions\"}",
               "queryType": "range",
               "refId": "A"
             }
