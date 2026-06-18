@@ -663,10 +663,10 @@
         },
         {
           "datasource": {
-            "type": "loki",
-            "uid": "P8E80F9AEF21F6940"
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
           },
-          "description": "Owner: E Track\n\nData Source: Loki\n\nStatus: Pending - fail2ban log collection required\n\nPurpose: Count blocked IP events detected by fail2ban.\n\nExpected log source:\nfail2ban\n\nExpected pattern:\nBan event in /var/log/fail2ban.log",
+          "description": "Owner: E Track\n\nData Source: Prometheus\n\nStatus: Active\n\nPurpose: Count currently blocked IP addresses detected by fail2ban.\n\nMetric:\nfail2ban_currently_banned_total\n\nSource:\nfail2ban-client status\n\nExpected behavior:\nBlocked IP count increases when fail2ban bans an IP.\nBlocked IP count decreases when bans expire or are manually removed.",
           "fieldConfig": {
             "defaults": {
               "color": {
@@ -729,10 +729,10 @@
                 "type": "prometheus",
                 "uid": "PBFA97CFB590B2093"
               },
-              "expr": "sum(count_over_time({job=\"fail2ban\"} |= \"Ban\" [$__range]))",
-              "instant": false,
-              "legendFormat": "__auto",
-              "range": true,
+              "expr": "fail2ban_currently_banned_total",
+              "instant": true,
+              "legendFormat": "Blocked IPs",
+              "range": false,
               "refId": "A"
             }
           ],
@@ -1397,7 +1397,9 @@
                 "type": "cloudwatch",
                 "uid": "P034F075C744B399F"
               },
-              "dimensions": {},
+              "dimensions": {
+                "AutoScalingGroupName": "__AWS_BLUE_ASG_NAME__"
+              },
               "expression": "",
               "id": "",
               "label": "",
@@ -1476,7 +1478,10 @@
                 "type": "cloudwatch",
                 "uid": "P034F075C744B399F"
               },
-              "dimensions": {},
+              "dimensions": {
+                "LoadBalancer": "__AWS_ALB_LOAD_BALANCER__",
+                "TargetGroup": "__AWS_BLUE_TARGET_GROUP__"
+              },
               "expression": "",
               "id": "",
               "label": "",
