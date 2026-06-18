@@ -71,6 +71,26 @@ BankAppDown:
   cooldown: 10
 
 
+  # AppNginxDown:
+  # description: "AWS App Nginx container is down"
+  # category: user_service
+  # notify: true
+  # notify_success: true
+  # log: recovery.log
+  # mode: auto_recovery
+  # action: restart_remote_container
+  # target: aws-nginx
+  # command: "bash ./actions/aws_app_restart.sh lb-security-nginx"
+  # verify:
+  #   type: http
+  #   url: "${APP_HEALTH_URL}"
+  #   timeout: 5
+  # retry: 3
+  # verify_delay: 10
+  # retry_interval: 10
+  # cooldown: 10
+
+
 # --------------------------------------------------
 # Maintenance Recovery
 # --------------------------------------------------
@@ -261,21 +281,6 @@ RateLimitTriggered:
 # --------------------------------------------------
 # Pending Decisions
 # --------------------------------------------------
-#
-# B Track 확인 필요
-# - App health endpoint
-# - Login failure metric name
-# - Rate limit metric name
-#
-# D Track 확인 필요
-# - maintenance.log 분리 적용 방식
-# - notify 필드 실제 분기 적용 방식
-# - Recovery Lock 구현 방식
-#
-# 보류
-# - PostgreSQL Replica Promote / Failover
-#   - Primary 단순 재기동을 넘어서는 DB 전환/승격은 자동복구 범위 외
-#   - 운영자 승인 또는 후속 구현 검토
 #
 # - RecoveryControllerDown 보호 방식
 #   - Docker restart policy

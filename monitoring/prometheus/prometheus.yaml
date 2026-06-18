@@ -45,7 +45,6 @@ scrape_configs:
       - source_labels: [__meta_ts_hostname]
         target_label: ts_host        # ★ instance(ip:port) 유지, hostname은 별도 라벨
 
-
   - job_name: app-health
     metrics_path: /probe
     params:
@@ -73,3 +72,10 @@ scrape_configs:
       - source_labels: [__meta_ts_hostname]
         target_label: ts_host
 
+  # BEGIN AUTO GENERATED: nginx-log-metrics
+  - job_name: nginx-log-metrics
+    metrics_path: /nginx_log_metrics.prom
+    static_configs:
+      - targets:
+          - 100.70.36.115:9105
+  # END AUTO GENERATED: nginx-log-metrics
