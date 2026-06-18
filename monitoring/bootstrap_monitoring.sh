@@ -115,7 +115,8 @@ done
 
 echo "[OK] .env 필수값 확인 완료"
 
-APP_IP=$(tailscale status | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
+TAILSCALE_STATUS=$(tailscale status)
+APP_IP=$(printf '%s\n' "$TAILSCALE_STATUS" | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
 
 if [ -z "$APP_IP" ]; then
     echo "[ERROR] App Tailscale IP를 찾을 수 없습니다."
@@ -124,7 +125,8 @@ fi
 
 APP_HEALTH_URL="http://${APP_IP}/health"
 
-MONITORING_METRICS_HOST=$(tailscale ip -4 | head -1)
+TAILSCALE_IPS=$(tailscale ip -4)
+MONITORING_METRICS_HOST=$(printf '%s\n' "$TAILSCALE_IPS" | awk 'NF {print $1; exit}')
 
 if [ -z "$MONITORING_METRICS_HOST" ]; then
     echo "[ERROR] Monitoring Tailscale IP를 찾을 수 없습니다."
@@ -269,6 +271,25 @@ if [ -x "./lambda/cloudwatch-telegram-notifier/deploy_cloudwatch_telegram_lambda
 else
     echo "[ERROR] CloudWatch Telegram Notifier 배포 스크립트를 찾을 수 없거나 실행 권한이 없습니다."
     exit 1
+fi
+
+RESET_GRAFANA="${RESET_GRAFANA:-false}"
+
+if [ "$RESET_GRAFANA" = "true" ]; then
+    echo "[WARN] Grafana volume 초기화 진행"
+    docker compose \
+        --env-file .env \
+        --env-file .env.generated \
+        -f docker-compose.monitoring.yaml \
+        stop grafana || true
+
+    docker compose \
+        --env-file .env \
+        --env-file .env.generated \
+        -f docker-compose.monitoring.yaml \
+        rm -f grafana || true
+
+    docker volume ls -q | grep -E 'grafana' | xargs -r docker volume rm
 fi
 
 docker compose \
