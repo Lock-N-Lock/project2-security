@@ -6,6 +6,12 @@ AWS_BASTION_PUBLIC_IP="${AWS_BASTION_PUBLIC_IP:-}"
 AWS_SSH_KEY_PATH="${AWS_SSH_KEY_PATH:-/app/ssh/lb-key.pem}"
 AWS_SSH_USER="${AWS_SSH_USER:-ec2-user}"
 
+DB_HOST_MAIN="${DB_HOST_MAIN:-}"
+DB_HOST_REPLICA="${DB_HOST_REPLICA:-}"
+DB_PORT="${DB_PORT:-5432}"
+DB_REPLICA_CONTAINER="${DB_REPLICA_CONTAINER:-lb-postgres-replica}"
+NGINX_CONTAINER="${NGINX_CONTAINER:-lb-security-nginx}"
+
 CONTAINER_NAME="${1:-}"
 
 
@@ -36,6 +42,55 @@ if [ ! -f "$AWS_SSH_KEY_PATH" ]; then
   echo "ERROR: SSH key not found: $AWS_SSH_KEY_PATH"
   exit 1
 fi
+
+check_tcp() {
+  local host="$1"
+  local port="$2"
+  [ -n "$host" ] || return 0
+
+  if command -v nc >/dev/null 2>&1; then
+    nc -z -w 3 "$host" "$port"
+  else
+    timeout 3 bash -c "cat < /dev/null > /dev/tcp/${host}/${port}"
+  fi
+}
+
+wait_tcp() {
+  local host="$1"
+  local port="$2"
+  local retries="${3:-10}"
+
+  [ -n "$host" ] || return 0
+
+  for i in $(seq 1 "$retries"); do
+    if check_tcp "$host" "$port"; then
+      return 0
+    fi
+    sleep 2
+  done
+
+  return 1
+}
+
+if [ -n "$DB_HOST_REPLICA" ] && ! check_tcp "$DB_HOST_REPLICA" "$DB_PORT"; then
+  echo "WARN: replica DB is not reachable: ${DB_HOST_REPLICA}:${DB_PORT}"
+
+  if sudo docker ps -a --format "{{.Names}}" | grep -qx "$DB_REPLICA_CONTAINER"; then
+    echo "INFO: starting local replica DB container: ${DB_REPLICA_CONTAINER}"
+    sudo docker start "$DB_REPLICA_CONTAINER" >/dev/null || true
+  fi
+
+  if ! wait_tcp "$DB_HOST_REPLICA" "$DB_PORT" 10; then
+    echo "ERROR: replica DB is still not reachable: ${DB_HOST_REPLICA}:${DB_PORT}"
+    exit 1
+  fi
+fi
+
+REMOTE_CHECK_MAIN_DB=""
+if [ -n "$DB_HOST_MAIN" ]; then
+  REMOTE_CHECK_MAIN_DB="timeout 3 bash -c 'cat < /dev/null > /dev/tcp/${DB_HOST_MAIN}/${DB_PORT}'"
+fi
+
 
 REMOTE_FIND_CONTAINER='
 if [ -n "'"$CONTAINER_NAME"'" ]; then
@@ -68,9 +123,14 @@ ssh -i "$AWS_SSH_KEY_PATH" \
   -o UserKnownHostsFile=/tmp/known_hosts \
   -o ProxyCommand="ssh -i $AWS_SSH_KEY_PATH -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/known_hosts -W %h:%p ${AWS_SSH_USER}@${AWS_BASTION_PUBLIC_IP}" \
   "${AWS_SSH_USER}@${AWS_APP_PRIVATE_IP}" \
-  "if [ \"\$(sudo docker inspect -f '{{.State.Status}}' '${CONTAINER_NAME}')\" = 'running' ]; then \
+  "if [ -n \"${REMOTE_CHECK_MAIN_DB}\" ]; then \
+     ${REMOTE_CHECK_MAIN_DB} || { echo 'ERROR: main DB is not reachable from app host: ${DB_HOST_MAIN}:${DB_PORT}'; exit 1; }; \
+   fi && \
+   if [ \"\$(sudo docker inspect -f '{{.State.Status}}' '${CONTAINER_NAME}')\" = 'running' ]; then \
      sudo docker restart '${CONTAINER_NAME}'; \
    else \
      sudo docker start '${CONTAINER_NAME}'; \
    fi && \
+   NET=\$(sudo docker inspect '${NGINX_CONTAINER}' --format '{{range \$name, \$conf := .NetworkSettings.Networks}}{{println \$name}}{{end}}' | head -1); \
+   if [ -n \"\$NET\" ]; then sudo docker network connect \"\$NET\" '${CONTAINER_NAME}' 2>/dev/null || true; fi && \
    sudo docker inspect -f '{{.State.Status}}' '${CONTAINER_NAME}' | grep -w running"

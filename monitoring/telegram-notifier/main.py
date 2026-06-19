@@ -174,12 +174,31 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
     recovered_at = payload.get("recovered_at") or "unknown"
     duration_seconds = payload.get("duration_seconds") or "unknown"
 
+    action_lines: list[str] = []
+    result_message = "서비스가 정상 상태로 복구되었습니다."
+
+    if alertname == "BankAppDown":
+        action_lines = [
+            "",
+            "Action:",
+            "- Replica DB connectivity check",
+            "- Main DB connectivity check from App host",
+            "- App container restart/start",
+            "- Nginx network validation",
+            "- Health verify",
+        ]
+        result_message = (
+            "DB 의존성과 애플리케이션 네트워크를 검증한 뒤 "
+            "서비스가 정상 상태로 복구되었습니다."
+        )
+
     return "\n".join(
         [
             "✅ 자동 복구 완료",
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
+            *action_lines,
             "",
             f"Started At: {started_at}",
             f"Recovered At: {recovered_at}",
@@ -188,7 +207,7 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
             f"Verify: {verify_url}",
             "Result: Success",
             "",
-            "결과: 서비스가 정상 상태로 복구되었습니다.",
+            f"결과: {result_message}",
         ]
     )
 
