@@ -16,11 +16,9 @@ query_count() {
   | jq -r '.data.result[0] | if . then .value[1] else "0" end'
 }
 
-fail2ban_banned_count() {
-  local jail="$1"
-
+fetch_fail2ban_stats() {
   if [ -z "${APP_HOST}" ] || [ ! -f "${SSH_KEY}" ]; then
-    echo 0
+    echo "0 0"
     return
   fi
 
@@ -28,16 +26,20 @@ fail2ban_banned_count() {
     -o StrictHostKeyChecking=no \
     -o UserKnownHostsFile=/dev/null \
     "${APP_USER}@${APP_HOST}" \
-    "sudo fail2ban-client status ${jail} | awk -F: '/Currently banned/ {gsub(/ /,\"\"); print \$2}'" \
-    2>/dev/null || echo 0
+    'for jail in nginx-login nginx-rate-limit; do
+       val=$(sudo fail2ban-client status "$jail" | awk -F: "/Currently banned/ {gsub(/ /, \"\", \$2); print \$2}")
+       printf "%s " "${val:-0}"
+     done' || echo "0 0"
 }
 
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
 STATUS_429=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":429" [1m]))')
 LOGIN_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"uri\":\"/login\"" |= "\"status\":401" [1m]))')
 
-F2B_LOGIN_BANNED=$(fail2ban_banned_count "nginx-login")
-F2B_RATELIMIT_BANNED=$(fail2ban_banned_count "nginx-rate-limit")
+read -r F2B_LOGIN_BANNED F2B_RATELIMIT_BANNED <<< "$(fetch_fail2ban_stats)"
+
+F2B_LOGIN_BANNED="${F2B_LOGIN_BANNED:-0}"
+F2B_RATELIMIT_BANNED="${F2B_RATELIMIT_BANNED:-0}"
 F2B_TOTAL_BANNED=$((F2B_LOGIN_BANNED + F2B_RATELIMIT_BANNED))
 
 cat > "$OUT" <<METRICS
