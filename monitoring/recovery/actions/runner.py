@@ -1,7 +1,7 @@
 import subprocess
 import shlex
 
-from utils.logger import write_critical_log
+from utils.logger import write_critical_log, write_recovery_log
 
 
 def run_command(command: str, timeout: int = 10) -> bool:
@@ -17,9 +17,20 @@ def run_command(command: str, timeout: int = 10) -> bool:
             universal_newlines=True
         )
 
+        stdout = (result.stdout or "").strip()
+        stderr = (result.stderr or "").strip()
+
+        if stdout:
+            for line in stdout.splitlines():
+                write_recovery_log(f"action stdout: {line}")
+
+        if stderr:
+            for line in stderr.splitlines():
+                write_recovery_log(f"action stderr: {line}")
+
         if result.returncode != 0:
             write_critical_log(
-                f"command failed: {command}, stderr={result.stderr.strip()}"
+                f"command failed: {command}, stderr={stderr}"
             )
 
         return result.returncode == 0

@@ -72,6 +72,10 @@ wait_tcp() {
   return 1
 }
 
+if [ -n "$DB_HOST_REPLICA" ]; then
+  echo "INFO: checking replica DB connectivity: ${DB_HOST_REPLICA}:${DB_PORT}"
+fi
+
 if [ -n "$DB_HOST_REPLICA" ] && ! check_tcp "$DB_HOST_REPLICA" "$DB_PORT"; then
   echo "WARN: replica DB is not reachable: ${DB_HOST_REPLICA}:${DB_PORT}"
 
@@ -86,8 +90,13 @@ if [ -n "$DB_HOST_REPLICA" ] && ! check_tcp "$DB_HOST_REPLICA" "$DB_PORT"; then
   fi
 fi
 
+if [ -n "$DB_HOST_REPLICA" ]; then
+  echo "INFO: replica DB connectivity OK: ${DB_HOST_REPLICA}:${DB_PORT}"
+fi
+
 REMOTE_CHECK_MAIN_DB=""
 if [ -n "$DB_HOST_MAIN" ]; then
+  echo "INFO: main DB connectivity will be checked from app host: ${DB_HOST_MAIN}:${DB_PORT}"
   REMOTE_CHECK_MAIN_DB="timeout 3 bash -c 'cat < /dev/null > /dev/tcp/${DB_HOST_MAIN}/${DB_PORT}'"
 fi
 
@@ -124,7 +133,7 @@ ssh -i "$AWS_SSH_KEY_PATH" \
   -o ProxyCommand="ssh -i $AWS_SSH_KEY_PATH -o StrictHostKeyChecking=no -o UserKnownHostsFile=/tmp/known_hosts -W %h:%p ${AWS_SSH_USER}@${AWS_BASTION_PUBLIC_IP}" \
   "${AWS_SSH_USER}@${AWS_APP_PRIVATE_IP}" \
   "if [ -n \"${REMOTE_CHECK_MAIN_DB}\" ]; then \
-     ${REMOTE_CHECK_MAIN_DB} || { echo 'ERROR: main DB is not reachable from app host: ${DB_HOST_MAIN}:${DB_PORT}'; exit 1; }; \
+     ${REMOTE_CHECK_MAIN_DB} && echo 'INFO: main DB connectivity OK from app host: ${DB_HOST_MAIN}:${DB_PORT}' || { echo 'ERROR: main DB is not reachable from app host: ${DB_HOST_MAIN}:${DB_PORT}'; exit 1; }; \
    fi && \
    if [ \"\$(sudo docker inspect -f '{{.State.Status}}' '${CONTAINER_NAME}')\" = 'running' ]; then \
      sudo docker restart '${CONTAINER_NAME}'; \
