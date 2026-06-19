@@ -29,6 +29,28 @@ groups:
           summary: LockBank App Down
           description: LockBank /health probe via Nginx is failed.
 
+      - alert: HighLoginFailureRate
+        expr: nginx_login_401_count >= 5
+        for: 30s
+        labels:
+          severity: warning
+          category: security
+          service: lockbank-app
+        annotations:
+          summary: High Login Failure Rate
+          description: Login failure count exceeded threshold in recent Nginx logs.
+
+      - alert: RateLimitTriggered
+        expr: nginx_status_429_count >= 5
+        for: 30s
+        labels:
+          severity: warning
+          category: security
+          service: nginx
+        annotations:
+          summary: Rate Limit Triggered
+          description: HTTP 429 count exceeded threshold in recent Nginx logs.
+
       # - alert: AppNodeExporterDown
       #   expr: up{job="app-nodes", instance=~".*:9100"} == 0
       #   for: 30s
@@ -86,43 +108,6 @@ groups:
       #     summary: DB Node Exporter Down
       #     description: DB server node_exporter metrics endpoint is down.
 
-      # ==================================================
-      # Database Alerts
-      # DB 노드 / PostgreSQL Exporter scrape 검증 후 활성화
-
-      # DBHighCPU / DBHighMemory:
-      # - db-node의 node_exporter 메트릭 수집 시 활성화
-      #
-      # Recovery Controller는 온프레에서 동작하므로
-      # AWS DB 복구는 원격 실행 방식(Remote Adapter) 확정 후 활성화한다.
-      #
-      # 제외 범위:
-      # - Replica Promote
-      # - Failover
-      # - DB 연결 정보 전환
-      # ==================================================
-
-      # - alert: DBHighCPU
-      #   expr: 100 - (avg by(instance)(rate(node_cpu_seconds_total{job="db-node", mode="idle"}[5m])) * 100) > 85
-      #   for: 5m
-      #   labels:
-      #     severity: warning
-      #     category: database
-      #     service: db-node
-      #   annotations:
-      #     summary: DB CPU 85% 초과
-      #     description: DB node CPU usage is over 85% for 5 minutes.
-
-      # - alert: DBHighMemory
-      #   expr: (1 - node_memory_MemAvailable_bytes{job="db-node"} / node_memory_MemTotal_bytes{job="db-node"}) * 100 > 85
-      #   for: 5m
-      #   labels:
-      #     severity: warning
-      #     category: database
-      #     service: db-node
-      #   annotations:
-      #     summary: DB 메모리 85% 초과
-      #     description: DB node memory usage is over 85% for 5 minutes.
 
       # ==================================================
       # Maintenance Alerts
@@ -177,29 +162,6 @@ groups:
           description: Nginx Exporter scrape target is down.
 
       # ==================================================
-      # Infrastructure Events (CloudWatch Alarm)
-      # ==================================================
-
-      # NOTE:
-      # 아래 항목은 Prometheus Alert Rule이 아니라
-      # Terraform cloudwatch.tf에 정의된 AWS CloudWatch Alarm 기반 이벤트이다.
-      #
-      # D Track에서는 Grafana CloudWatch datasource를 통해
-      # 해당 Alarm 상태를 Dashboard / Alert History에 반영하는 구조를 준비한다.
-      #
-      # 현재 Recovery Controller의 action 대상은 아니며,
-      # 인프라 상태 확인 및 운영 이벤트 이력 용도로 사용한다.
-      #
-      # Terraform source:
-      # - infra/terraform/cloudwatch.tf
-      #
-      # Expected CloudWatch Events:
-      # - ALB5xxHigh
-      # - TargetGroupUnhealthy
-      # - TargetGroupUnhealthyGreen
-      # - ASGScaleOut
-
-      # ==================================================
       # Test Alerts
       # ==================================================
 
@@ -229,25 +191,3 @@ groups:
       #   annotations:
       #     summary: Nginx Down
       #     description: Nginx availability check requires nginx-exporter or blackbox-exporter.
-
-      # - alert: HighLoginFailureRate
-      #   expr: TODO_LOGIN_FAILURE_METRIC
-      #   for: 1m
-      #   labels:
-      #     severity: warning
-      #     category: security
-      #     service: lockbank-app
-      #   annotations:
-      #     summary: High Login Failure Rate
-      #     description: Login failure rate exceeded threshold.
-
-      # - alert: RateLimitTriggered
-      #   expr: TODO_RATE_LIMIT_METRIC
-      #   for: 1m
-      #   labels:
-      #     severity: warning
-      #     category: security
-      #     service: nginx
-      #   annotations:
-      #     summary: Rate Limit Triggered
-      #     description: Rate limit event detected.

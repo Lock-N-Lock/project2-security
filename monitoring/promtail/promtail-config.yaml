@@ -24,3 +24,36 @@ scrape_configs:
         labels:
           job: critical-logs
           __path__: /app/logs/critical.log
+
+  - job_name: aws-nginx-access
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: aws-nginx-access
+          __path__: /aws-nginx/access.log
+
+  - job_name: aws-nginx-error
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: aws-nginx-error
+          __path__: /aws-nginx/error.log
+
+  - job_name: aws-fail2ban
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: aws-fail2ban
+          __path__: /aws-nginx/fail2ban.log
+
+  - job_name: security-events
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: security-events
+          __path__: /monitoring-logs/security-events.log
+  

@@ -1,21 +1,46 @@
 #!/bin/bash
 set -euo pipefail
 
-OUT="/tmp/nginx_log_metrics.prom"
-LOKI="http://localhost:3100"
+PROJECT_DIR="${PROJECT_DIR:-$(pwd)}"
+OUT="${OUT:-/tmp/nginx_log_metrics.prom}"
+LOKI="${LOKI:-http://localhost:3100}"
+
+APP_HOST="${APP_HOST:-$(tailscale status 2>/dev/null | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')}"
+APP_USER="${APP_USER:-ec2-user}"
+SSH_KEY="${SSH_KEY:-${PROJECT_DIR}/infra/terraform/lb-key.pem}"
 
 query_count() {
   local q="$1"
   curl -G -s "${LOKI}/loki/api/v1/query" \
     --data-urlencode "query=${q}" \
-  | jq -r '.data.result[0].value[1] // "0"'
+  | jq -r '.data.result[0] | if . then .value[1] else "0" end'
+}
+
+fail2ban_banned_count() {
+  local jail="$1"
+
+  if [ -z "${APP_HOST}" ] || [ ! -f "${SSH_KEY}" ]; then
+    echo 0
+    return
+  fi
+
+  ssh -i "${SSH_KEY}" \
+    -o StrictHostKeyChecking=no \
+    -o UserKnownHostsFile=/dev/null \
+    "${APP_USER}@${APP_HOST}" \
+    "sudo fail2ban-client status ${jail} | awk -F: '/Currently banned/ {gsub(/ /,\"\"); print \$2}'" \
+    2>/dev/null || echo 0
 }
 
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
 STATUS_429=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":429" [1m]))')
 LOGIN_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"uri\":\"/login\"" |= "\"status\":401" [1m]))')
 
-cat > "$OUT" <<EOF
+F2B_LOGIN_BANNED=$(fail2ban_banned_count "nginx-login")
+F2B_RATELIMIT_BANNED=$(fail2ban_banned_count "nginx-rate-limit")
+F2B_TOTAL_BANNED=$((F2B_LOGIN_BANNED + F2B_RATELIMIT_BANNED))
+
+cat > "$OUT" <<METRICS
 # HELP nginx_status_401_count Nginx access log HTTP 401 count in last 1 minute
 # TYPE nginx_status_401_count gauge
 nginx_status_401_count ${STATUS_401}
@@ -27,6 +52,18 @@ nginx_status_429_count ${STATUS_429}
 # HELP nginx_login_401_count Nginx /login HTTP 401 count in last 1 minute
 # TYPE nginx_login_401_count gauge
 nginx_login_401_count ${LOGIN_401}
-EOF
+
+# HELP fail2ban_currently_banned_login Currently banned IPs in nginx-login jail
+# TYPE fail2ban_currently_banned_login gauge
+fail2ban_currently_banned_login ${F2B_LOGIN_BANNED}
+
+# HELP fail2ban_currently_banned_ratelimit Currently banned IPs in nginx-rate-limit jail
+# TYPE fail2ban_currently_banned_ratelimit gauge
+fail2ban_currently_banned_ratelimit ${F2B_RATELIMIT_BANNED}
+
+# HELP fail2ban_currently_banned_total Total currently banned IPs
+# TYPE fail2ban_currently_banned_total gauge
+fail2ban_currently_banned_total ${F2B_TOTAL_BANNED}
+METRICS
 
 cat "$OUT"

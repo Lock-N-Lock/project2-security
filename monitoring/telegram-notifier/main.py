@@ -147,13 +147,10 @@ def build_message(payload: dict[str, Any]) -> str:
 
 def build_recovery_failed_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
-    target = payload.get("target", "unknown")
-    retry = payload.get("retry", "unknown")
-    failure_stage = payload.get("failure_stage", "unknown")
-    reason = payload.get(
-        "reason",
-        "Service health verification failed after recovery action"
-    )
+    target = payload.get("target") or "unknown"
+    retry = payload.get("retry") or "unknown"
+    failure_stage = payload.get("failure_stage") or "unknown"
+    reason = payload.get("reason") or "Service health verification failed after recovery action"
 
     return "\n".join(
         [
@@ -171,11 +168,29 @@ def build_recovery_failed_message(payload: dict[str, Any]) -> str:
 
 def build_recovery_success_message(payload: dict[str, Any]) -> str:
     alertname = payload.get("alertname", "UnknownAlert")
-    target = payload.get("target", "unknown")
-    verify_url = payload.get("verify_url", "unknown")
-    started_at = payload.get("started_at", "unknown")
-    recovered_at = payload.get("recovered_at", "unknown")
-    duration_seconds = payload.get("duration_seconds", "unknown")
+    target = payload.get("target") or "unknown"
+    verify_url = payload.get("verify_url") or "unknown"
+    started_at = payload.get("started_at") or "unknown"
+    recovered_at = payload.get("recovered_at") or "unknown"
+    duration_seconds = payload.get("duration_seconds") or "unknown"
+
+    action_lines: list[str] = []
+    result_message = "서비스가 정상 상태로 복구되었습니다."
+
+    if alertname == "BankAppDown":
+        action_lines = [
+            "",
+            "Action:",
+            "- Replica DB connectivity check",
+            "- Main DB connectivity check from App host",
+            "- App container restart/start",
+            "- Nginx network validation",
+            "- Health verify",
+        ]
+        result_message = (
+            "DB 의존성과 애플리케이션 네트워크를 검증한 뒤 "
+            "서비스가 정상 상태로 복구되었습니다."
+        )
 
     return "\n".join(
         [
@@ -183,6 +198,7 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
             "",
             f"Alert: {alertname}",
             f"Target: {target}",
+            *action_lines,
             "",
             f"Started At: {started_at}",
             f"Recovered At: {recovered_at}",
@@ -191,7 +207,7 @@ def build_recovery_success_message(payload: dict[str, Any]) -> str:
             f"Verify: {verify_url}",
             "Result: Success",
             "",
-            "결과: 서비스가 정상 상태로 복구되었습니다.",
+            f"결과: {result_message}",
         ]
     )
 

@@ -23,3 +23,14 @@ maxretry = 20
 findtime = 60
 bantime = 1800
 action = iptables-multiport[name=nginx-rate-limit, port="http,https", protocol=tcp]
+
+# PHP / WordPress 스캔 요청 반복 --> 자동 취약점 스캐너로 판단 --> IP 차단
+# 5분 안에 PHP/WP 스캔성 404가 10회 이상 발생하면 24시간 차단
+[nginx-scan]
+enabled = true
+filter = nginx-scan
+logpath = /var/log/nginx-container/access.log
+maxretry = 10
+findtime = 300
+bantime = 86400
+action = iptables-multiport[name=nginx-scan, port="http,https", protocol=tcp]

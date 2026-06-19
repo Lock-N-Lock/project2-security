@@ -115,6 +115,8 @@ services:
     volumes:
       - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
       - ./recovery/logs:/app/logs:ro
+      - ./logs/aws-nginx:/aws-nginx:ro
+      - ./logs:/monitoring-logs:ro
     command:
       - "-config.file=/etc/promtail/promtail-config.yaml"
     depends_on:

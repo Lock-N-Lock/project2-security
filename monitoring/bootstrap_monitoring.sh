@@ -115,7 +115,8 @@ done
 
 echo "[OK] .env 필수값 확인 완료"
 
-APP_IP=$(tailscale status | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
+TAILSCALE_STATUS=$(tailscale status)
+APP_IP=$(printf '%s\n' "$TAILSCALE_STATUS" | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')
 
 if [ -z "$APP_IP" ]; then
     echo "[ERROR] App Tailscale IP를 찾을 수 없습니다."
@@ -124,7 +125,8 @@ fi
 
 APP_HEALTH_URL="http://${APP_IP}/health"
 
-MONITORING_METRICS_HOST=$(tailscale ip -4 | head -1)
+TAILSCALE_IPS=$(tailscale ip -4)
+MONITORING_METRICS_HOST=$(printf '%s\n' "$TAILSCALE_IPS" | awk 'NF {print $1; exit}')
 
 if [ -z "$MONITORING_METRICS_HOST" ]; then
     echo "[ERROR] Monitoring Tailscale IP를 찾을 수 없습니다."
@@ -187,6 +189,19 @@ AWS_BASTION_PUBLIC_IP=$(
         --output text
 )
 
+DB_HOST_MAIN=$(
+    aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=lb-db*" "Name=instance-state-name,Values=running" \
+        --query "Reservations[].Instances[].PrivateIpAddress | [0]" \
+        --output text
+)
+
+DB_HOST_REPLICA="${MONITORING_METRICS_HOST}"
+DB_PORT="${DB_PORT:-5432}"
+DB_REPLICA_CONTAINER="${DB_REPLICA_CONTAINER:-lb-postgres-replica}"
+NGINX_CONTAINER="${NGINX_CONTAINER:-lb-security-nginx}"
+APP_CONTAINER="${APP_CONTAINER:-lb-fastapi}"
+
 generated_vars=(
     AWS_ALB_LOAD_BALANCER
     AWS_BLUE_TARGET_GROUP
@@ -197,13 +212,19 @@ generated_vars=(
     AWS_BASTION_PUBLIC_IP
     MONITORING_METRICS_HOST
     NGINX_LOG_METRICS_URL
+    DB_HOST_MAIN
+    DB_HOST_REPLICA
+    DB_PORT
+    DB_REPLICA_CONTAINER
+    NGINX_CONTAINER
+    APP_CONTAINER
 )
 
 for var in "${generated_vars[@]}"; do
     value="${!var}"
 
     if [ -z "$value" ] || [ "$value" = "None" ]; then
-        echo "[ERROR] AWS 리소스 자동 조회 실패: ${var}"
+        echo "[ERROR] 자동 생성 변수 조회 실패: ${var}"
         exit 1
     fi
 done
@@ -220,6 +241,12 @@ AWS_BASTION_PUBLIC_IP=${AWS_BASTION_PUBLIC_IP}
 AWS_SSH_KEY_PATH=/app/ssh/lb-key.pem
 MONITORING_METRICS_HOST=${MONITORING_METRICS_HOST}
 NGINX_LOG_METRICS_URL=${NGINX_LOG_METRICS_URL}
+DB_HOST_MAIN=${DB_HOST_MAIN}
+DB_HOST_REPLICA=${DB_HOST_REPLICA}
+DB_PORT=${DB_PORT}
+DB_REPLICA_CONTAINER=${DB_REPLICA_CONTAINER}
+NGINX_CONTAINER=${NGINX_CONTAINER}
+APP_CONTAINER=${APP_CONTAINER}
 EOF
 
 export MONITORING_METRICS_HOST
@@ -269,6 +296,26 @@ if [ -x "./lambda/cloudwatch-telegram-notifier/deploy_cloudwatch_telegram_lambda
 else
     echo "[ERROR] CloudWatch Telegram Notifier 배포 스크립트를 찾을 수 없거나 실행 권한이 없습니다."
     exit 1
+fi
+
+RESET_GRAFANA="${RESET_GRAFANA:-false}"
+
+if [ "$RESET_GRAFANA" = "true" ]; then
+    echo "[WARN] Grafana volume 초기화 진행"
+
+    docker compose \
+        --env-file .env \
+        --env-file .env.generated \
+        -f docker-compose.monitoring.yaml \
+        stop grafana || true
+
+    docker compose \
+        --env-file .env \
+        --env-file .env.generated \
+        -f docker-compose.monitoring.yaml \
+        rm -f grafana || true
+
+    docker volume rm monitoring_grafana_data >/dev/null 2>&1 || true
 fi
 
 docker compose \
@@ -330,6 +377,14 @@ echo "LAMBDA_ARN          = ${LAMBDA_ARN}"
 
 echo "MONITORING_METRICS_HOST = ${MONITORING_METRICS_HOST}"
 echo "NGINX_LOG_METRICS_URL   = ${NGINX_LOG_METRICS_URL}"
+
+echo ""
+echo "DB_MAIN            = ${DB_HOST_MAIN}"
+echo "DB_REPLICA         = ${DB_HOST_REPLICA}"
+echo "DB_PORT            = ${DB_PORT}"
+echo "DB_REPLICA_CONTAINER = ${DB_REPLICA_CONTAINER}"
+echo "APP_CONTAINER      = ${APP_CONTAINER}"
+echo "NGINX_CONTAINER    = ${NGINX_CONTAINER}"
 
 echo ""
 echo "============================================="
