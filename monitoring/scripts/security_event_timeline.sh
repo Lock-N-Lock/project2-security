@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MONITORING_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 METRICS_FILE="${METRICS_FILE:-/tmp/nginx_log_metrics.prom}"
-LOG_FILE="${LOG_FILE:-logs/security-events.log}"
-STATE_FILE="${STATE_FILE:-logs/security-events.state}"
+LOG_FILE="${LOG_FILE:-${MONITORING_DIR}/logs/security-events.log}"
+STATE_FILE="${STATE_FILE:-${MONITORING_DIR}/logs/security-events.state}"
 
 mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
@@ -76,3 +78,42 @@ if [ "$banned_total" -gt 0 ]; then
 else
   emit_transition "Fail2BanActive" "0" "CRITICAL" "Fail2BanActive" "banned_total=0"
 fi
+
+
+FAIL2BAN_LOG_FILE="${FAIL2BAN_LOG_FILE:-${MONITORING_DIR}/logs/aws-nginx/fail2ban.log}"
+FAIL2BAN_STATE_FILE="${FAIL2BAN_STATE_FILE:-${MONITORING_DIR}/logs/fail2ban-events.state}"
+
+process_fail2ban_events() {
+  [ -f "$FAIL2BAN_LOG_FILE" ] || return 0
+  local last_line total start
+  total="$(wc -l < "$FAIL2BAN_LOG_FILE")"
+
+  if [ ! -f "$FAIL2BAN_STATE_FILE" ]; then
+    echo "$total" > "$FAIL2BAN_STATE_FILE"
+    return 0
+  fi
+
+  last_line="$(cat "$FAIL2BAN_STATE_FILE" 2>/dev/null || echo 0)"
+
+  if [ "$total" -lt "$last_line" ]; then
+    last_line=0
+  fi
+
+  start=$((last_line + 1))
+
+  tail -n +"$start" "$FAIL2BAN_LOG_FILE" | while read -r line; do
+    if [[ "$line" =~ \[([^]]+)\]\ Ban\ ([0-9a-fA-F:.]+) ]]; then
+      jail="${BASH_REMATCH[1]}"
+      ip="${BASH_REMATCH[2]}"
+      echo "[$(now)] [CRITICAL] security event: IPBanned, jail=${jail}, ip=${ip}" >> "$LOG_FILE"
+    elif [[ "$line" =~ \[([^]]+)\]\ Unban\ ([0-9a-fA-F:.]+) ]]; then
+      jail="${BASH_REMATCH[1]}"
+      ip="${BASH_REMATCH[2]}"
+      echo "[$(now)] [INFO] security event: IPUnbanned, jail=${jail}, ip=${ip}" >> "$LOG_FILE"
+    fi
+  done
+
+  echo "$total" > "$FAIL2BAN_STATE_FILE"
+}
+
+process_fail2ban_events

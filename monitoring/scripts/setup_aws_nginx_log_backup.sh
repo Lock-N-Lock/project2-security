@@ -2,13 +2,16 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="${PROJECT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+MONITORING_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+PROJECT_DIR="$(cd "${MONITORING_DIR}/.." && pwd)"
+RUN_USER="${SUDO_USER:-$(id -un)}"
+RUN_GROUP="$(id -gn "${RUN_USER}" 2>/dev/null || echo "${RUN_USER}")"
 
 APP_HOST="${APP_HOST:-$(tailscale status 2>/dev/null | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')}"
 APP_USER="${APP_USER:-ec2-user}"
 SSH_KEY_SOURCE="${SSH_KEY_SOURCE:-${PROJECT_DIR}/infra/terraform/lb-key.pem}"
 INSTALL_DIR="${INSTALL_DIR:-/opt/lockbank}"
-BACKUP_INTERVAL="${BACKUP_INTERVAL:-5min}"
+BACKUP_INTERVAL="${BACKUP_INTERVAL:-1h}"
 METRICS_PORT="${METRICS_PORT:-9105}"
 METRICS_INTERVAL="${METRICS_INTERVAL:-30sec}"
 METRICS_WORKDIR="${METRICS_WORKDIR:-/tmp}"
@@ -43,13 +46,28 @@ APP_HOST="${APP_HOST}"
 APP_USER="${APP_USER}"
 SSH_KEY="${INSTALL_DIR}/keys/lb-key.pem"
 DEST_DIR="${INSTALL_DIR}/log-backup/aws-nginx"
+VIEW_DIR="${MONITORING_DIR}/logs/aws-nginx"
+RUN_USER="${RUN_USER}"
+RUN_GROUP="${RUN_GROUP}"
 
 mkdir -p "\${DEST_DIR}"
+
+ssh -i "\${SSH_KEY}" -o StrictHostKeyChecking=no "\${APP_USER}@\${APP_HOST}" \\
+  'sudo test -f /var/log/fail2ban.log && sudo chmod 644 /var/log/fail2ban.log || true'
 
 rsync -avz --delete \\
   -e "ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no" \\
   "\${APP_USER}@\${APP_HOST}:/var/log/nginx-container/" \\
   "\${DEST_DIR}/"
+
+rsync -avz \\
+  -e "ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no" \\
+  "\${APP_USER}@\${APP_HOST}:/var/log/fail2ban.log" \\
+  "\${DEST_DIR}/fail2ban.log"
+
+mkdir -p "\${VIEW_DIR}"
+cp -a "\${DEST_DIR}/." "\${VIEW_DIR}/"
+chown -R "${RUN_USER}:${RUN_GROUP}" "\${VIEW_DIR}" || true
 SCRIPT
 
 chmod +x "${INSTALL_DIR}/scripts/backup_aws_nginx_logs.sh"
@@ -88,8 +106,11 @@ if ! systemctl start backup-aws-nginx-logs.service; then
     POLICY_WORKDIR="/tmp/lockbank-selinux-policy"
     mkdir -p "${POLICY_WORKDIR}"
 
-    ausearch -m AVC -ts recent | audit2allow -M "${POLICY_WORKDIR}/lockbank_backup"
-    semodule -i "${POLICY_WORKDIR}/lockbank_backup.pp"
+    (
+      cd "${POLICY_WORKDIR}"
+      ausearch -m AVC -ts recent | audit2allow -M lockbank_backup
+      semodule -i lockbank_backup.pp
+    )
     restorecon -Rv "${INSTALL_DIR}" >/dev/null 2>&1 || true
 
     echo "[INFO] Retry after SELinux policy install..."
@@ -129,7 +150,7 @@ Environment=PROJECT_DIR=${PROJECT_DIR}
 Environment=APP_HOST=${APP_HOST}
 Environment=APP_USER=${APP_USER}
 Environment=SSH_KEY=${INSTALL_DIR}/keys/lb-key.pem
-ExecStart=/bin/bash ${PROJECT_DIR}/monitoring/scripts/nginx_log_metrics.sh
+ExecStart=/bin/bash ${MONITORING_DIR}/scripts/nginx_log_metrics.sh
 GENERATE_SERVICE
 
 cat > /etc/systemd/system/nginx-log-metrics-generate.timer <<GENERATE_TIMER

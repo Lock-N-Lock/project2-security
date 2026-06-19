@@ -354,7 +354,7 @@
             "type": "loki",
             "uid": "P8E80F9AEF21F6940"
           },
-          "description": "Status: Active / Pending Mixed\n\nCurrent Active Sources:\n- recovery-logs\n- critical-logs\n\nPlanned Sources:\n- security-events\n- fail2ban-logs\n- nginx-logs\n- github-actions\n\nEvent Types:\n- Recovery Started / Completed / Failed\n- Fail2Ban Ban / Unban\n- RateLimitTriggered\n- HighLoginFailureRate\n- Deploy Started / Completed\n- Security Scan Result\n- Rollback Executed\n\nPurpose:\nAlert → Recovery → Verify → Result\nSecurity Event → Block / Rate Limit\nDeploy → Scan → Health Check → Rollback",
+          "description": "Status: Active\n\nCurrent Active Sources:\n- security-events\n- recovery-logs\n- aws-fail2ban\n- aws-nginx-access\n- aws-nginx-error\n\nSecurity Event Flow:\n- Login Attack → Detect → Ban\n- API Flooding → Rate Limit → Block\n- Fail2Ban → Ban / Unban\n\nRecovery Event Flow:\n- Alert Triggered\n- Recovery Started\n- Recovery Completed\n- Verification Failed\n\nPurpose:\nUnified Timeline for Security Monitoring, Incident Response and Recovery Operations",
           "gridPos": {
             "h": 8,
             "w": 24,
@@ -379,7 +379,7 @@
                 "uid": "P8E80F9AEF21F6940"
               },
               "editorMode": "code",
-              "expr": "{job=~\"recovery-logs|critical-logs|security-events|github-actions\"}",
+              "expr": "{job=~\"security-events|recovery-logs\"}",
               "queryType": "range",
               "refId": "A"
             }

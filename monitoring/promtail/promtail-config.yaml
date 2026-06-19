@@ -41,6 +41,14 @@ scrape_configs:
           job: aws-nginx-error
           __path__: /aws-nginx/error.log
 
+  - job_name: aws-fail2ban
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: aws-fail2ban
+          __path__: /aws-nginx/fail2ban.log
+
   - job_name: security-events
     static_configs:
       - targets:
