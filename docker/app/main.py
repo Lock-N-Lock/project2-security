@@ -4,8 +4,8 @@ import logging
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.pool import ThreadedConnectionPool
-from fastapi import FastAPI, Request, Form, Response, Cookie, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse, PlainTextResponse
+from fastapi import FastAPI, Request, Form, Response, status
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 import bcrypt
 from prometheus_client import Counter, generate_latest, CONTENT_TYPE_LATEST
@@ -96,6 +96,34 @@ app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 templates.env.globals['server_info'] = SERVER_INFO
 
+class TransferError(Exception):
+    def __init__(self, message: str, status_code: int):
+        self.message = message
+        self.status_code = status_code
+
+def render_login(request: Request, error: str, status_code: int):
+    csrf_token = generate_csrf_token()
+    response = templates.TemplateResponse(
+        request,
+        "login.html",
+        {"request": request, "error": error, "csrf_token": csrf_token},
+        status_code=status_code,
+    )
+    response.set_cookie(key="csrf_token", value=csrf_token, httponly=True, secure=True, samesite="lax")
+    return response
+
+def render_transfer(request: Request, error: str, status_code: int, message: str = None):
+    csrf_token = generate_csrf_token()
+    response = templates.TemplateResponse(
+        request,
+        "transfer.html",
+        {"request": request, "message": message, "error": error, "csrf_token": csrf_token},
+        status_code=status_code,
+    )
+    response.set_cookie(key="csrf_token", value=csrf_token, httponly=True, secure=True, samesite="lax")
+    return response
+
+
 @contextmanager
 def get_db_connection(pool):
     conn = pool.getconn()
@@ -134,15 +162,13 @@ def read_root(request: Request):
 
 @app.get("/login", response_class=HTMLResponse)
 def login_page(request: Request, error: str = None):
-    csrf_token = generate_csrf_token()
-    response = templates.TemplateResponse(request, "login.html", {"request": request, "error": error, "csrf_token": csrf_token})
-    response.set_cookie(key="csrf_token", value=csrf_token, httponly=True, secure=True, samesite="lax")
-    return response
+    return render_login(request, error, status.HTTP_200_OK)
 
 @app.post("/login")
 def login(request: Request, response: Response, username: str = Form(...), password: str = Form(...), csrf_token: str = Form(...)):
     if not validate_csrf_token(request, csrf_token):
-        return RedirectResponse(url="/login?error=Invalid request", status_code=302)
+        logger.warning("[SECURITY] CSRF_FAILURE - Path: /login, IP: %s", request.client.host)
+        return render_login(request, "Invalid request", status.HTTP_403_FORBIDDEN)
     try:
         # READ from Replica
         with get_db_connection(replica_pool) as conn:
@@ -158,7 +184,7 @@ def login(request: Request, response: Response, username: str = Form(...), passw
             client_ip = request.client.host
             logger.warning(f"[SECURITY] LOGIN_FAILURE - IP: {client_ip}, Username: {username}")
             login_failed_total.inc()
-            return RedirectResponse(url="/login?error=Invalid username or password", status_code=302)
+            return render_login(request, "Invalid username or password", status.HTTP_401_UNAUTHORIZED)
         
         # Simple session using cookie
         signed_token = session_serializer.dumps(user['id'])
@@ -168,7 +194,7 @@ def login(request: Request, response: Response, username: str = Form(...), passw
 
     except Exception as e:
         logger.error(f"[SYSTEM ERROR] Login process failure: {str(e)}")
-        return RedirectResponse(url="/login?error=Internal Server Error. Please try again later.", status_code=302)
+        return render_login(request, "Internal Server Error. Please try again later.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @app.get("/logout")
 def logout():
@@ -180,7 +206,7 @@ def logout():
 def dashboard(request: Request):
     user_id = get_current_user(request)
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return render_login(request, "Login required", status.HTTP_401_UNAUTHORIZED)
     
     try:
         # READ from Replica
@@ -205,29 +231,28 @@ def dashboard(request: Request):
             "transactions": transactions
         })
     except Exception as e:
-        return RedirectResponse(url=f"/login?error=Dashboard Error: {str(e)}", status_code=302)
+        logger.error("[SYSTEM ERROR] Dashboard failure: %s", str(e))
+        return render_login(request, "Dashboard Error. Please try again later.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @app.get("/transfer", response_class=HTMLResponse)
 def transfer_page(request: Request, message: str = None, error: str = None):
     user_id = get_current_user(request)
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
-    csrf_token = generate_csrf_token()
-    response = templates.TemplateResponse(request, "transfer.html", {"request": request, "message": message, "error": error, "csrf_token": csrf_token})
-    response.set_cookie(key="csrf_token", value=csrf_token, httponly=True, secure=True, samesite="lax")
-    return response
+        return render_login(request, "Login required", status.HTTP_401_UNAUTHORIZED)
+    return render_transfer(request, error, status.HTTP_200_OK, message)
 
 @app.post("/transfer")
 def process_transfer(request: Request, account: str = Form(...), amount: int = Form(...), csrf_token: str = Form(...)):
     if not validate_csrf_token(request, csrf_token):
-        return RedirectResponse(url="/transfer?error=Invalid request", status_code=302)
+        logger.warning("[SECURITY] CSRF_FAILURE - Path: /transfer, IP: %s", request.client.host)
+        return render_transfer(request, "Invalid request", status.HTTP_403_FORBIDDEN)
     transfer_requests_total.inc()
     user_id = get_current_user(request)
     if not user_id:
-        return RedirectResponse(url="/login", status_code=302)
+        return render_login(request, "Login required", status.HTTP_401_UNAUTHORIZED)
     
     if amount <= 0:
-        return RedirectResponse(url="/transfer?error=Invalid amount", status_code=302)
+        return render_transfer(request, "Invalid amount", status.HTTP_400_BAD_REQUEST)
 
     try:
         # WRITE to Main DB
@@ -239,10 +264,10 @@ def process_transfer(request: Request, account: str = Form(...), amount: int = F
                     receiver = cur.fetchone()
                     
                     if not receiver:
-                        raise ValueError("Receiver not found")
+                        raise TransferError("Receiver not found", status.HTTP_404_NOT_FOUND)
 
                     if user_id == receiver['id']:
-                        raise ValueError("Cannot transfer to yourself")
+                        raise TransferError("Cannot transfer to yourself", status.HTTP_400_BAD_REQUEST)
                     
                     # Lock rows in consistent ascending ID order to prevent deadlock
                     first_id, second_id = sorted([user_id, receiver['id']])
@@ -252,7 +277,7 @@ def process_transfer(request: Request, account: str = Form(...), amount: int = F
                     sender = locked_users.get(user_id)
                     
                     if not sender or sender['balance'] < amount:
-                        raise ValueError("Insufficient funds")
+                        raise TransferError("Insufficient funds", status.HTTP_400_BAD_REQUEST)
                         
                     # Deduct from sender
                     cur.execute("UPDATE users SET balance = balance - %s WHERE id = %s", (amount, user_id))
@@ -274,10 +299,11 @@ def process_transfer(request: Request, account: str = Form(...), amount: int = F
             
             return RedirectResponse(url="/dashboard", status_code=302)
 
-    except ValueError as e:
-        return RedirectResponse(url=f"/transfer?error={str(e)}", status_code=302)
+    except TransferError as e:
+        return render_transfer(request, e.message, e.status_code)
     except Exception as e:
-        return RedirectResponse(url=f"/transfer?error=Transfer failed: {str(e)}", status_code=302)
+        logger.error("[SYSTEM ERROR] Transfer process failure: %s", str(e))
+        return render_transfer(request, "Transfer failed. Please try again later.", status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @app.get("/health")
 def health_check():
