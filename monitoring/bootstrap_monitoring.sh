@@ -189,6 +189,19 @@ AWS_BASTION_PUBLIC_IP=$(
         --output text
 )
 
+DB_HOST_MAIN=$(
+    aws ec2 describe-instances \
+        --filters "Name=tag:Name,Values=lb-db*" "Name=instance-state-name,Values=running" \
+        --query "Reservations[].Instances[].PrivateIpAddress | [0]" \
+        --output text
+)
+
+DB_HOST_REPLICA="${MONITORING_METRICS_HOST}"
+DB_PORT="${DB_PORT:-5432}"
+DB_REPLICA_CONTAINER="${DB_REPLICA_CONTAINER:-lb-postgres-replica}"
+NGINX_CONTAINER="${NGINX_CONTAINER:-lb-security-nginx}"
+APP_CONTAINER="${APP_CONTAINER:-lb-fastapi}"
+
 generated_vars=(
     AWS_ALB_LOAD_BALANCER
     AWS_BLUE_TARGET_GROUP
@@ -199,13 +212,19 @@ generated_vars=(
     AWS_BASTION_PUBLIC_IP
     MONITORING_METRICS_HOST
     NGINX_LOG_METRICS_URL
+    DB_HOST_MAIN
+    DB_HOST_REPLICA
+    DB_PORT
+    DB_REPLICA_CONTAINER
+    NGINX_CONTAINER
+    APP_CONTAINER
 )
 
 for var in "${generated_vars[@]}"; do
     value="${!var}"
 
     if [ -z "$value" ] || [ "$value" = "None" ]; then
-        echo "[ERROR] AWS 리소스 자동 조회 실패: ${var}"
+        echo "[ERROR] 자동 생성 변수 조회 실패: ${var}"
         exit 1
     fi
 done
@@ -222,6 +241,12 @@ AWS_BASTION_PUBLIC_IP=${AWS_BASTION_PUBLIC_IP}
 AWS_SSH_KEY_PATH=/app/ssh/lb-key.pem
 MONITORING_METRICS_HOST=${MONITORING_METRICS_HOST}
 NGINX_LOG_METRICS_URL=${NGINX_LOG_METRICS_URL}
+DB_HOST_MAIN=${DB_HOST_MAIN}
+DB_HOST_REPLICA=${DB_HOST_REPLICA}
+DB_PORT=${DB_PORT}
+DB_REPLICA_CONTAINER=${DB_REPLICA_CONTAINER}
+NGINX_CONTAINER=${NGINX_CONTAINER}
+APP_CONTAINER=${APP_CONTAINER}
 EOF
 
 export MONITORING_METRICS_HOST
@@ -352,6 +377,14 @@ echo "LAMBDA_ARN          = ${LAMBDA_ARN}"
 
 echo "MONITORING_METRICS_HOST = ${MONITORING_METRICS_HOST}"
 echo "NGINX_LOG_METRICS_URL   = ${NGINX_LOG_METRICS_URL}"
+
+echo ""
+echo "DB_MAIN            = ${DB_HOST_MAIN}"
+echo "DB_REPLICA         = ${DB_HOST_REPLICA}"
+echo "DB_PORT            = ${DB_PORT}"
+echo "DB_REPLICA_CONTAINER = ${DB_REPLICA_CONTAINER}"
+echo "APP_CONTAINER      = ${APP_CONTAINER}"
+echo "NGINX_CONTAINER    = ${NGINX_CONTAINER}"
 
 echo ""
 echo "============================================="
