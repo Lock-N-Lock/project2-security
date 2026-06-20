@@ -14,7 +14,7 @@ INSTALL_DIR="${INSTALL_DIR:-/opt/lockbank}"
 BACKUP_INTERVAL="${BACKUP_INTERVAL:-1h}"
 METRICS_PORT="${METRICS_PORT:-9105}"
 METRICS_INTERVAL="${METRICS_INTERVAL:-30sec}"
-METRICS_WORKDIR="${METRICS_WORKDIR:-/tmp}"
+METRICS_WORKDIR="${METRICS_WORKDIR:-/opt/lockbank/metrics}"
 
 if [ -z "${APP_HOST}" ]; then
   echo "[ERROR] APP_HOST is empty. Set APP_HOST=100.x.x.x"
@@ -33,7 +33,11 @@ dnf install -y rsync openssh-clients audit policycoreutils policycoreutils-pytho
 
 mkdir -p "${INSTALL_DIR}/scripts" \
          "${INSTALL_DIR}/keys" \
-         "${INSTALL_DIR}/log-backup/aws-nginx"
+         "${INSTALL_DIR}/log-backup/aws-nginx" \
+         "${METRICS_WORKDIR}"
+
+chown -R nobody:nobody "${METRICS_WORKDIR}"
+chmod 755 "${METRICS_WORKDIR}"
 
 cp "${SSH_KEY_SOURCE}" "${INSTALL_DIR}/keys/lb-key.pem"
 chmod 400 "${INSTALL_DIR}/keys/lb-key.pem"
@@ -64,6 +68,25 @@ rsync -avz \\
   -e "ssh -i \${SSH_KEY} -o StrictHostKeyChecking=no" \\
   "\${APP_USER}@\${APP_HOST}:/var/log/fail2ban.log" \\
   "\${DEST_DIR}/fail2ban.log"
+
+trim_log_file() {
+  local file="\$1"
+  local keep_lines="\$2"
+
+  [ -f "\${file}" ] || return 0
+
+  local current_lines
+  current_lines=\$(wc -l < "\${file}" || echo 0)
+
+  if [ "\${current_lines}" -gt "\${keep_lines}" ]; then
+    tail -n "\${keep_lines}" "\${file}" > "\${file}.tmp"
+    mv "\${file}.tmp" "\${file}"
+  fi
+}
+
+trim_log_file "\${DEST_DIR}/access.log" 50000
+trim_log_file "\${DEST_DIR}/error.log" 10000
+trim_log_file "\${DEST_DIR}/fail2ban.log" 10000
 
 mkdir -p "\${VIEW_DIR}"
 cp -a "\${DEST_DIR}/." "\${VIEW_DIR}/"
@@ -130,6 +153,8 @@ After=network.target
 
 [Service]
 Type=simple
+User=nobody
+Group=nobody
 WorkingDirectory=${METRICS_WORKDIR}
 ExecStart=/usr/bin/python3 -m http.server ${METRICS_PORT}
 Restart=always
@@ -150,6 +175,7 @@ Environment=PROJECT_DIR=${PROJECT_DIR}
 Environment=APP_HOST=${APP_HOST}
 Environment=APP_USER=${APP_USER}
 Environment=SSH_KEY=${INSTALL_DIR}/keys/lb-key.pem
+Environment=OUT=${METRICS_WORKDIR}/nginx_log_metrics.prom
 ExecStart=/bin/bash ${MONITORING_DIR}/scripts/nginx_log_metrics.sh
 GENERATE_SERVICE
 

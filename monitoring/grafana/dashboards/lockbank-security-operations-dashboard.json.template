@@ -1144,7 +1144,7 @@
                 "uid": "P034F075C744B399F"
               },
               "dimensions": {
-                "AutoScalingGroupName": "lb-asg-blue"
+                "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}"
               },
               "expression": "",
               "id": "",
@@ -1158,7 +1158,7 @@
               "period": "60",
               "queryMode": "Metrics",
               "refId": "A",
-              "region": "ap-northeast-2",
+              "region": "${AWS_DEFAULT_REGION}",
               "sqlExpression": "",
               "statistic": "Average"
             }
@@ -1255,7 +1255,7 @@
                 "uid": "P034F075C744B399F"
               },
               "dimensions": {
-                "AutoScalingGroupName": "lb-asg-blue"
+                "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}"
               },
               "expression": "",
               "id": "",
@@ -1269,7 +1269,7 @@
               "period": "60",
               "queryMode": "Metrics",
               "refId": "A",
-              "region": "ap-northeast-2",
+              "region": "${AWS_DEFAULT_REGION}",
               "sqlExpression": "",
               "statistic": "Sum"
             },
@@ -1278,7 +1278,7 @@
                 "type": "cloudwatch",
                 "uid": "P034F075C744B399F"
               },
-              "AutoScalingGroupName": "lb-asg-blue",
+              "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}",
               "expression": "",
               "hide": false,
               "id": "",
@@ -1292,7 +1292,7 @@
               "period": "60",
               "queryMode": "Metrics",
               "refId": "B",
-              "region": "ap-northeast-2",
+              "region": "${AWS_DEFAULT_REGION}",
               "sqlExpression": "",
               "statistic": "Sum"
             }
@@ -1374,8 +1374,8 @@
                 "uid": "P034F075C744B399F"
               },
               "dimensions": {
-                "LoadBalancer": "app/lb-alb/8b3edb55471c292b",
-                "TargetGroup": "targetgroup/lb-tg-blue/ad2ed0677378e3aa"
+                "LoadBalancer": "${AWS_ALB_LOAD_BALANCER}",
+                "TargetGroup": "${AWS_BLUE_TARGET_GROUP}"
               },
               "expression": "",
               "id": "",
@@ -1389,7 +1389,7 @@
               "period": "300",
               "queryMode": "Metrics",
               "refId": "A",
-              "region": "ap-northeast-2",
+              "region": "${AWS_DEFAULT_REGION}",
               "sqlExpression": "",
               "statistic": "Average"
             }
@@ -1457,7 +1457,7 @@
                 "uid": "P034F075C744B399F"
               },
               "dimensions": {
-                "AutoScalingGroupName": "lb-asg-blue"
+                "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}"
               },
               "expression": "",
               "id": "",
@@ -1471,7 +1471,7 @@
               "period": "",
               "queryMode": "Metrics",
               "refId": "A",
-              "region": "ap-northeast-2",
+              "region": "${AWS_DEFAULT_REGION}",
               "sqlExpression": "",
               "statistic": "Average"
             }

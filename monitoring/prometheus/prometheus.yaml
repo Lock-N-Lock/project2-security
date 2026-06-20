@@ -79,3 +79,12 @@ scrape_configs:
       - targets:
           - 100.70.36.115:9105
   # END AUTO GENERATED: nginx-log-metrics
+
+  # BEGIN AUTO GENERATED: lockbank-app-metrics
+  - job_name: lockbank-app-metrics
+    scheme: http
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 100.98.17.52
+  # END AUTO GENERATED: lockbank-app-metrics

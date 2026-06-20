@@ -69,14 +69,24 @@ install_zip_on_rocky() {
         dnf install -y zip
     fi
 }
-
 install_zip_on_rocky
+
+if ! command -v envsubst >/dev/null 2>&1; then
+    echo "[INFO] envsubst(gettext) 설치 진행"
+
+    if command -v sudo >/dev/null 2>&1; then
+        sudo dnf install -y gettext
+    else
+        dnf install -y gettext
+    fi
+fi
 
 required_commands=(
     aws
     docker
     tailscale
     zip
+    envsubst
 )
 
 for cmd in "${required_commands[@]}"; do
@@ -93,7 +103,6 @@ prompt_if_empty "TELEGRAM_BOT_TOKEN" "" true
 prompt_if_empty "TELEGRAM_CHAT_ID" "" true
 prompt_if_empty "AWS_ACCESS_KEY_ID" "" true
 prompt_if_empty "AWS_SECRET_ACCESS_KEY" "" true
-prompt_if_empty "AWS_DEFAULT_REGION" "ap-northeast-2"
 
 required_vars=(
     TS_API_KEY
@@ -101,7 +110,6 @@ required_vars=(
     TELEGRAM_CHAT_ID
     AWS_ACCESS_KEY_ID
     AWS_SECRET_ACCESS_KEY
-    AWS_DEFAULT_REGION
 )
 
 for var in "${required_vars[@]}"; do
@@ -136,8 +144,16 @@ fi
 NGINX_LOG_METRICS_URL="http://${MONITORING_METRICS_HOST}:9105/nginx_log_metrics.prom"
 
 export AWS_ACCESS_KEY_ID="$(awk -F= '$1=="AWS_ACCESS_KEY_ID"{print substr($0, index($0,$2)); exit}' .env)"
+
 export AWS_SECRET_ACCESS_KEY="$(awk -F= '$1=="AWS_SECRET_ACCESS_KEY"{print substr($0, index($0,$2)); exit}' .env)"
-export AWS_DEFAULT_REGION="$(awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env)"
+
+export AWS_DEFAULT_REGION="$(
+    awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env
+)"
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || true)}"
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
+
+export AWS_DEFAULT_REGION
 SNS_TOPIC_NAME="$(awk -F= '$1=="SNS_TOPIC_NAME"{print substr($0, index($0,$2)); exit}' .env)"
 SNS_TOPIC_NAME="${SNS_TOPIC_NAME:-lb-alerts}"
 export SNS_TOPIC_NAME
@@ -201,8 +217,16 @@ DB_PORT="${DB_PORT:-5432}"
 DB_REPLICA_CONTAINER="${DB_REPLICA_CONTAINER:-lb-postgres-replica}"
 NGINX_CONTAINER="${NGINX_CONTAINER:-lb-security-nginx}"
 APP_CONTAINER="${APP_CONTAINER:-lb-fastapi}"
+GRAFANA_BASE_PATH="/grafana"
+GRAFANA_DASHBOARD_UID="dfodmd3s8ecqoc"
+GRAFANA_DASHBOARD_SLUG="lockbank-security-and-operations-dashboard"
+GRAFANA_ORG_ID="1"
+GRAFANA_TIME_FROM="now-24h"
+GRAFANA_TIME_TO="now"
+GRAFANA_THEME="light"
 
 generated_vars=(
+    AWS_DEFAULT_REGION
     AWS_ALB_LOAD_BALANCER
     AWS_BLUE_TARGET_GROUP
     AWS_GREEN_TARGET_GROUP
@@ -218,6 +242,13 @@ generated_vars=(
     DB_REPLICA_CONTAINER
     NGINX_CONTAINER
     APP_CONTAINER
+    GRAFANA_BASE_PATH
+    GRAFANA_DASHBOARD_UID
+    GRAFANA_DASHBOARD_SLUG
+    GRAFANA_ORG_ID
+    GRAFANA_TIME_FROM
+    GRAFANA_TIME_TO
+    GRAFANA_THEME
 )
 
 for var in "${generated_vars[@]}"; do
@@ -231,6 +262,7 @@ done
 
 cat > .env.generated <<EOF
 APP_HEALTH_URL=${APP_HEALTH_URL}
+AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
 AWS_ALB_LOAD_BALANCER=${AWS_ALB_LOAD_BALANCER}
 AWS_BLUE_TARGET_GROUP=${AWS_BLUE_TARGET_GROUP}
 AWS_GREEN_TARGET_GROUP=${AWS_GREEN_TARGET_GROUP}
@@ -247,9 +279,30 @@ DB_PORT=${DB_PORT}
 DB_REPLICA_CONTAINER=${DB_REPLICA_CONTAINER}
 NGINX_CONTAINER=${NGINX_CONTAINER}
 APP_CONTAINER=${APP_CONTAINER}
+GRAFANA_BASE_PATH=${GRAFANA_BASE_PATH}
+GRAFANA_DASHBOARD_UID=${GRAFANA_DASHBOARD_UID}
+GRAFANA_DASHBOARD_SLUG=${GRAFANA_DASHBOARD_SLUG}
+GRAFANA_ORG_ID=${GRAFANA_ORG_ID}
+GRAFANA_TIME_FROM=${GRAFANA_TIME_FROM}
+GRAFANA_TIME_TO=${GRAFANA_TIME_TO}
+GRAFANA_THEME=${GRAFANA_THEME}
 EOF
 
+export APP_HEALTH_URL
 export MONITORING_METRICS_HOST
+
+export AWS_DEFAULT_REGION
+export AWS_ALB_LOAD_BALANCER
+export AWS_BLUE_TARGET_GROUP
+export AWS_BLUE_ASG_NAME
+
+export GRAFANA_BASE_PATH
+export GRAFANA_DASHBOARD_UID
+export GRAFANA_DASHBOARD_SLUG
+export GRAFANA_ORG_ID
+export GRAFANA_TIME_FROM
+export GRAFANA_TIME_TO
+export GRAFANA_THEME
 
 python3 - <<'PY'
 from pathlib import Path
@@ -284,7 +337,65 @@ _, after = rest.split(end, 1)
 path.write_text(before + block + after)
 PY
 
-echo "[OK] prometheus.yaml nginx-log-metrics scrape job 갱신 완료"
+python3 - <<'PY'
+from pathlib import Path
+from urllib.parse import urlparse
+import os
+import sys
+
+path = Path("prometheus/prometheus.yaml")
+
+start = "  # BEGIN AUTO GENERATED: lockbank-app-metrics"
+end = "  # END AUTO GENERATED: lockbank-app-metrics"
+
+app_health_url = os.environ.get("APP_HEALTH_URL", "").strip()
+if not app_health_url:
+    print("[ERROR] APP_HEALTH_URL이 비어 있습니다.")
+    sys.exit(1)
+
+parsed = urlparse(app_health_url)
+scheme = parsed.scheme or "http"
+target = parsed.netloc
+
+if not target:
+    print(f"[ERROR] APP_HEALTH_URL에서 target을 추출하지 못했습니다: {app_health_url}")
+    sys.exit(1)
+
+text = path.read_text()
+
+if start not in text or end not in text:
+    print("[ERROR] prometheus.yaml에 lockbank-app-metrics 자동 생성 마커가 없습니다.")
+    print("[ERROR] 아래 두 줄을 scrape_configs 하단에 추가해야 합니다.")
+    print(start)
+    print(end)
+    sys.exit(1)
+
+block = f'''{start}
+  - job_name: lockbank-app-metrics
+    scheme: {scheme}
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - {target}
+{end}'''
+
+before, rest = text.split(start, 1)
+_, after = rest.split(end, 1)
+
+path.write_text(before + block + after)
+PY
+
+echo "[OK] prometheus.yaml auto generated scrape jobs 갱신 완료"
+
+envsubst '${GRAFANA_BASE_PATH} ${GRAFANA_DASHBOARD_UID} ${GRAFANA_DASHBOARD_SLUG} ${GRAFANA_ORG_ID} ${GRAFANA_TIME_FROM} ${GRAFANA_TIME_TO} ${GRAFANA_THEME}' \
+    < security-center/index.html.template \
+    > security-center/index.html
+
+envsubst '${AWS_ALB_LOAD_BALANCER} ${AWS_BLUE_TARGET_GROUP} ${AWS_BLUE_ASG_NAME} ${AWS_DEFAULT_REGION}' \
+    < grafana/dashboards/lockbank-security-operations-dashboard.json.template \
+    > grafana/dashboards/lockbank-security-operations-dashboard.json
+
+echo "[OK] Security Center / Grafana Dashboard template 치환 완료"
 
 echo "[OK] .env.generated 생성 완료"
 cat .env.generated
@@ -357,6 +468,7 @@ echo " Auto Discovered Resources"
 echo "============================================="
 
 echo "APP_HEALTH_URL      = ${APP_HEALTH_URL}"
+echo "AWS_DEFAULT_REGION  = ${AWS_DEFAULT_REGION}"
 echo "APP_PRIVATE_IP      = ${AWS_APP_PRIVATE_IP}"
 echo "BASTION_PUBLIC_IP   = ${AWS_BASTION_PUBLIC_IP}"
 
@@ -368,6 +480,15 @@ echo "GREEN_TG            = ${AWS_GREEN_TARGET_GROUP}"
 echo ""
 echo "BLUE_ASG            = ${AWS_BLUE_ASG_NAME}"
 echo "GREEN_ASG           = ${AWS_GREEN_ASG_NAME}"
+
+echo ""
+echo "GRAFANA_BASE_PATH   = ${GRAFANA_BASE_PATH}"
+echo "GRAFANA_UID         = ${GRAFANA_DASHBOARD_UID}"
+echo "GRAFANA_SLUG        = ${GRAFANA_DASHBOARD_SLUG}"
+echo "GRAFANA_ORG_ID      = ${GRAFANA_ORG_ID}"
+echo "GRAFANA_TIME_FROM   = ${GRAFANA_TIME_FROM}"
+echo "GRAFANA_TIME_TO     = ${GRAFANA_TIME_TO}"
+echo "GRAFANA_THEME       = ${GRAFANA_THEME}"
 
 echo ""
 echo "SNS_TOPIC           = ${SNS_TOPIC_NAME}"
