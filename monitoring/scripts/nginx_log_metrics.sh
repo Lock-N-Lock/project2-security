@@ -22,15 +22,22 @@ fetch_fail2ban_stats() {
     return
   fi
 
-  ssh -i "${SSH_KEY}" \
-    -o StrictHostKeyChecking=no \
-    -o UserKnownHostsFile=/dev/null \
-    "${APP_USER}@${APP_HOST}" \
-    'for jail in nginx-login nginx-rate-limit; do
-       val=$(sudo fail2ban-client status "$jail" | awk -F: "/Currently banned/ {gsub(/ /, \"\", \$2); print \$2}")
-       printf "%s " "${val:-0}"
-     done' || echo "0 0"
+  read -r banned_login banned_ratelimit < <(
+    ssh -i "${SSH_KEY}" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=5 \
+      -o BatchMode=yes \
+      "${APP_USER}@${APP_HOST}" \
+      'for jail in nginx-login nginx-rate-limit; do
+        val=$(sudo fail2ban-client status "$jail" | awk -F: '\''/Currently banned/ {gsub(/ /, "", $2); print $2}'\'')
+        printf "%s " "${val:-0}"
+      done' 2>/dev/null || echo "0 0"
+    )
+
+  echo "${banned_login:-0} ${banned_ratelimit:-0}"
 }
+
 
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
 STATUS_429=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":429" [1m]))')

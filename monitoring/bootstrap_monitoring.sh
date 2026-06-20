@@ -103,7 +103,6 @@ prompt_if_empty "TELEGRAM_BOT_TOKEN" "" true
 prompt_if_empty "TELEGRAM_CHAT_ID" "" true
 prompt_if_empty "AWS_ACCESS_KEY_ID" "" true
 prompt_if_empty "AWS_SECRET_ACCESS_KEY" "" true
-prompt_if_empty "AWS_DEFAULT_REGION" "ap-northeast-2"
 
 required_vars=(
     TS_API_KEY
@@ -111,7 +110,6 @@ required_vars=(
     TELEGRAM_CHAT_ID
     AWS_ACCESS_KEY_ID
     AWS_SECRET_ACCESS_KEY
-    AWS_DEFAULT_REGION
 )
 
 for var in "${required_vars[@]}"; do
@@ -146,8 +144,16 @@ fi
 NGINX_LOG_METRICS_URL="http://${MONITORING_METRICS_HOST}:9105/nginx_log_metrics.prom"
 
 export AWS_ACCESS_KEY_ID="$(awk -F= '$1=="AWS_ACCESS_KEY_ID"{print substr($0, index($0,$2)); exit}' .env)"
+
 export AWS_SECRET_ACCESS_KEY="$(awk -F= '$1=="AWS_SECRET_ACCESS_KEY"{print substr($0, index($0,$2)); exit}' .env)"
-export AWS_DEFAULT_REGION="$(awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env)"
+
+export AWS_DEFAULT_REGION="$(
+    awk -F= '$1=="AWS_DEFAULT_REGION"{print substr($0, index($0,$2)); exit}' .env
+)"
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-$(aws configure get region 2>/dev/null || true)}"
+AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-2}"
+
+export AWS_DEFAULT_REGION
 SNS_TOPIC_NAME="$(awk -F= '$1=="SNS_TOPIC_NAME"{print substr($0, index($0,$2)); exit}' .env)"
 SNS_TOPIC_NAME="${SNS_TOPIC_NAME:-lb-alerts}"
 export SNS_TOPIC_NAME
@@ -220,6 +226,7 @@ GRAFANA_TIME_TO="now"
 GRAFANA_THEME="light"
 
 generated_vars=(
+    AWS_DEFAULT_REGION
     AWS_ALB_LOAD_BALANCER
     AWS_BLUE_TARGET_GROUP
     AWS_GREEN_TARGET_GROUP
@@ -255,6 +262,7 @@ done
 
 cat > .env.generated <<EOF
 APP_HEALTH_URL=${APP_HEALTH_URL}
+AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
 AWS_ALB_LOAD_BALANCER=${AWS_ALB_LOAD_BALANCER}
 AWS_BLUE_TARGET_GROUP=${AWS_BLUE_TARGET_GROUP}
 AWS_GREEN_TARGET_GROUP=${AWS_GREEN_TARGET_GROUP}
@@ -283,6 +291,7 @@ EOF
 export APP_HEALTH_URL
 export MONITORING_METRICS_HOST
 
+export AWS_DEFAULT_REGION
 export AWS_ALB_LOAD_BALANCER
 export AWS_BLUE_TARGET_GROUP
 export AWS_BLUE_ASG_NAME
@@ -382,7 +391,7 @@ envsubst '${GRAFANA_BASE_PATH} ${GRAFANA_DASHBOARD_UID} ${GRAFANA_DASHBOARD_SLUG
     < security-center/index.html.template \
     > security-center/index.html
 
-envsubst '${AWS_ALB_LOAD_BALANCER} ${AWS_BLUE_TARGET_GROUP} ${AWS_BLUE_ASG_NAME}' \
+envsubst '${AWS_ALB_LOAD_BALANCER} ${AWS_BLUE_TARGET_GROUP} ${AWS_BLUE_ASG_NAME} ${AWS_DEFAULT_REGION}' \
     < grafana/dashboards/lockbank-security-operations-dashboard.json.template \
     > grafana/dashboards/lockbank-security-operations-dashboard.json
 
@@ -459,6 +468,7 @@ echo " Auto Discovered Resources"
 echo "============================================="
 
 echo "APP_HEALTH_URL      = ${APP_HEALTH_URL}"
+echo "AWS_DEFAULT_REGION  = ${AWS_DEFAULT_REGION}"
 echo "APP_PRIVATE_IP      = ${AWS_APP_PRIVATE_IP}"
 echo "BASTION_PUBLIC_IP   = ${AWS_BASTION_PUBLIC_IP}"
 
