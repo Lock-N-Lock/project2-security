@@ -35,6 +35,9 @@ fetch_fail2ban_stats() {
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
 STATUS_429=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":429" [1m]))')
 LOGIN_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"uri\":\"/login\"" |= "\"status\":401" [1m]))')
+STATUS_200=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":200" [1m]))')
+STATUS_500=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":500" [1m]))')
+
 
 read -r F2B_LOGIN_BANNED F2B_RATELIMIT_BANNED <<< "$(fetch_fail2ban_stats)"
 
@@ -43,6 +46,10 @@ F2B_RATELIMIT_BANNED="${F2B_RATELIMIT_BANNED:-0}"
 F2B_TOTAL_BANNED=$((F2B_LOGIN_BANNED + F2B_RATELIMIT_BANNED))
 
 cat > "$OUT" <<METRICS
+# HELP nginx_status_200_count Nginx access log HTTP 200 count in last 1 minute
+# TYPE nginx_status_200_count gauge
+nginx_status_200_count ${STATUS_200}
+
 # HELP nginx_status_401_count Nginx access log HTTP 401 count in last 1 minute
 # TYPE nginx_status_401_count gauge
 nginx_status_401_count ${STATUS_401}
@@ -50,6 +57,10 @@ nginx_status_401_count ${STATUS_401}
 # HELP nginx_status_429_count Nginx access log HTTP 429 count in last 1 minute
 # TYPE nginx_status_429_count gauge
 nginx_status_429_count ${STATUS_429}
+
+# HELP nginx_status_500_count Nginx access log HTTP 500 count in last 1 minute
+# TYPE nginx_status_500_count gauge
+nginx_status_500_count ${STATUS_500}
 
 # HELP nginx_login_401_count Nginx /login HTTP 401 count in last 1 minute
 # TYPE nginx_login_401_count gauge

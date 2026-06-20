@@ -69,6 +69,25 @@ rsync -avz \\
   "\${APP_USER}@\${APP_HOST}:/var/log/fail2ban.log" \\
   "\${DEST_DIR}/fail2ban.log"
 
+trim_log_file() {
+  local file="\$1"
+  local keep_lines="\$2"
+
+  [ -f "\${file}" ] || return 0
+
+  local current_lines
+  current_lines=\$(wc -l < "\${file}" || echo 0)
+
+  if [ "\${current_lines}" -gt "\${keep_lines}" ]; then
+    tail -n "\${keep_lines}" "\${file}" > "\${file}.tmp"
+    mv "\${file}.tmp" "\${file}"
+  fi
+}
+
+trim_log_file "\${DEST_DIR}/access.log" 50000
+trim_log_file "\${DEST_DIR}/error.log" 10000
+trim_log_file "\${DEST_DIR}/fail2ban.log" 10000
+
 mkdir -p "\${VIEW_DIR}"
 cp -a "\${DEST_DIR}/." "\${VIEW_DIR}/"
 chown -R "${RUN_USER}:${RUN_GROUP}" "\${VIEW_DIR}" || true
