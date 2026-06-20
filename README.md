@@ -173,3 +173,27 @@ feature/<트랙>-<주제>  →  dev (임종원 리뷰·머지)  →  main (신�
 - 모니터링: Prometheus, Grafana, Alertmanager / 알림: Telegram·Slack
 - 부하·공격 시뮬레이션: Locust
 - DevSecOps(4중 잠금): Bandit(SAST), Trivy(이미지), OWASP ZAP(DAST), fail2ban·Nginx rate limit(런타임)
+
+---
+## GitHub Actions Secrets 설정
+#### Environment secrets
+| 시크릿 이름 (Name) | 설명 |
+| --- | --- |
+| `ACCESS_KEY` | AWS 인증키 |
+| `SECRET_KEY` | AWS 비밀키 |
+| `CF_TOKEN` | 클라우드플레어 토큰 |
+| `DOMAIN` | 보유 도메인 |
+| `IP` | 허용 IP 대역 |
+| `MY_BUCKET` | S3 버킷명 |
+| `MY_TABLE` | DynamoDB 테이블 |
+| `TAILNET` | 테일스케일 계정 |
+| `TS_API_KEY` | 테일스케일 키 |
+
+#### Repository secrets
+| 시크릿 이름 (Name) | 데이터 예시 |
+| --- | --- |
+| `DB_PASSWORD` | DB 비밀번호 |
+| `DOCKERHUB_USERNAME` | 도커허브 ID |
+| `DOCKERHUB_TOKEN` | 도커허브 토큰 |
+
+  
