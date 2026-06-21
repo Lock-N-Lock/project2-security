@@ -1227,7 +1227,23 @@
               },
               "unit": "bytes"
             },
-            "overrides": []
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Blue - Network Out"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "mode": "fixed",
+                      "fixedColor": "orange"
+                    }
+                  }
+                ]
+              }
+            ]
           },
           "gridPos": {
             "h": 8,
@@ -1259,7 +1275,7 @@
               },
               "expression": "",
               "id": "",
-              "label": "",
+              "label": "Blue - Network In",
               "logGroups": [],
               "matchExact": true,
               "metricEditorMode": 0,
@@ -1278,11 +1294,13 @@
                 "type": "cloudwatch",
                 "uid": "P034F075C744B399F"
               },
-              "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}",
+              "dimensions": {
+                "AutoScalingGroupName": "${AWS_BLUE_ASG_NAME}"
+              },
               "expression": "",
               "hide": false,
               "id": "",
-              "label": "",
+              "label": "Blue - Network Out",
               "logGroups": [],
               "matchExact": true,
               "metricEditorMode": 0,
