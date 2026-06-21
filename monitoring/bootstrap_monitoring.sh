@@ -433,7 +433,7 @@ docker compose \
     --env-file .env \
     --env-file .env.generated \
     -f docker-compose.monitoring.yaml \
-    up -d
+    up -d --build --force-recreate --remove-orphans
 
 LAMBDA_FUNCTION_NAME="lb-cloudwatch-telegram-notifier"
 
