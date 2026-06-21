@@ -31,13 +31,6 @@ resource "local_file" "ansible_inventory" {
             bastion:
               ansible_host: ${aws_instance.bastion.public_ip}
 
-        app:
-          hosts:
-            app-host:
-              ansible_host: 127.0.0.1
-              ansible_user: ec2-user
-              ansible_ssh_private_key_file: ${abspath(local_file.ssh_key.filename)}
-        
         lb-postgres-main:
           hosts:
             db-host:
