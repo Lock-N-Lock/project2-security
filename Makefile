@@ -94,7 +94,7 @@ apply-auto:
 
 # ── Ansible (DB 배포) ─────────────────────────────────────
 deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
-	@REAL_DB_IP=$$(tailscale status | grep -E "lb-db(-[0-9]+)?" | grep -v "offline" | awk '{print $$1}'); \
+	@REAL_DB_IP=$$(tailscale status | grep -E "lb-db(-[0-9]+)?" | grep -v "offline" | awk '{print $$1}' | head -n 1); \
 	if [ -n "$$REAL_DB_IP" ]; then \
 		echo "🔄 Updating database IP in inventory.yml to active Tailscale IP: $$REAL_DB_IP"; \
 		sed -i "s/100\.[0-9]\+\.[0-9]\+\.[0-9]\+/$$REAL_DB_IP/g" $(TF_DIR2)/inventory.yml; \
