@@ -1,7 +1,7 @@
 # ================================================================
 # security_groups.tf — 계층별 SG (최소 권한 원칙)
 # ALB → App → DB 단방향, Bastion=SSH 관문, NAT=App 아웃바운드
-# 앱은 compose(단일 호스트), Swarm 미사용
+# 앱은 bootstrap 이미지 + docker run(lb-net bridge) 배포, compose/Swarm 미사용
 # 파일위치 : ~/project2-security/infra/terraform/security_groups.tf
 # ================================================================
 
