@@ -41,34 +41,26 @@
 # App 서비스 장애
 BankAppDown:
   description: "LockBank FastAPI container is down"
-
   category: user_service
   notify: true
   notify_success: true
   log: recovery.log
-
   mode: auto_recovery
-
   action: restart_remote_container
-  
   target: aws-app
-
   command: "bash ./actions/aws_app_restart.sh"
-
   pre_verify:
     type: http
     url: "${APP_HEALTH_URL}"
     timeout: 5
-
   verify:
     type: http
     url: "${APP_HEALTH_URL}"
     timeout: 5
-
   retry: 3
-  verify_delay: 10
-  retry_interval: 10
-  cooldown: 10
+  verify_delay: 20
+  retry_interval: 15
+  cooldown: 30
 
 
   # AppNginxDown:
