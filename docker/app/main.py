@@ -133,6 +133,10 @@ def get_db_connection(pool):
         conn.rollback()
         raise
     finally:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         pool.putconn(conn)
 
 def get_current_user(request: Request):

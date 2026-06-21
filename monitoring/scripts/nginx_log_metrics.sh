@@ -40,11 +40,20 @@ fetch_fail2ban_stats() {
 
 
 STATUS_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":401" [1m]))')
+STATUS_401="${STATUS_401:-0}"
+if ! [[ "$STATUS_401" =~ ^[0-9]+$ ]]; then STATUS_401=0; fi
 STATUS_429=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":429" [1m]))')
+STATUS_429="${STATUS_429:-0}"
+if ! [[ "$STATUS_429" =~ ^[0-9]+$ ]]; then STATUS_429=0; fi
 LOGIN_401=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"uri\":\"/login\"" |= "\"status\":401" [1m]))')
+LOGIN_401="${LOGIN_401:-0}"
+if ! [[ "$LOGIN_401" =~ ^[0-9]+$ ]]; then LOGIN_401=0; fi
 STATUS_200=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":200" [1m]))')
+STATUS_200="${STATUS_200:-0}"
+if ! [[ "$STATUS_200" =~ ^[0-9]+$ ]]; then STATUS_200=0; fi
 STATUS_500=$(query_count 'sum(count_over_time({job="nginx-access"} |= "\"status\":500" [1m]))')
-
+STATUS_500="${STATUS_500:-0}"
+if ! [[ "$STATUS_500" =~ ^[0-9]+$ ]]; then STATUS_500=0; fi
 
 read -r F2B_LOGIN_BANNED F2B_RATELIMIT_BANNED <<< "$(fetch_fail2ban_stats)"
 

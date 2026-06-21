@@ -57,9 +57,13 @@ emit_transition() {
 }
 
 status_401="$(metric_value nginx_status_401_count)"
+status_401="${status_401:-0}"
 status_429="$(metric_value nginx_status_429_count)"
+status_429="${status_429:-0}"
 login_401="$(metric_value nginx_login_401_count)"
+login_401="${login_401:-0}"
 banned_total="$(metric_value fail2ban_currently_banned_total)"
+banned_total="${banned_total:-0}"
 
 if [ "$status_401" -gt 0 ] || [ "$login_401" -gt 0 ]; then
   emit_transition "HighLoginFailureRate" "1" "WARN" "HighLoginFailureRate" "status_401=${status_401}, login_401=${login_401}"
