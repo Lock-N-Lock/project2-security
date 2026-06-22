@@ -41,7 +41,7 @@ help:
 	@echo "  make deploy-db   DB 컨테이너 배포 (apply 이후, proj-mgmt)"
 	@echo "  make service     인프라 + DB 한 번에 (apply-auto + deploy-db)"
 	@echo "  make output      생성된 IP·ID 출력"
-	@echo "  make destroy     인프라 전체 삭제 (자동 승인)"
+	@echo "  make destroy     Monitoring + 인프라 전체 삭제 (자동 승인)"
 	@echo ""
 	@echo "  [ Monitoring ]"
 	@echo "  make monitoring-bootstrap   Monitoring Stack 초기 구성"
@@ -145,8 +145,12 @@ output:
 
 destroy:
 	@echo ""
-	@echo "⚠️  모든 인프라가 삭제됩니다. 실습 후 비용 절감용."
+	@echo "⚠️  Terraform 인프라 및 Monitoring Stack이 삭제됩니다."
 	@echo ""
+	@echo "🧹 Monitoring Stack 정리 중..."
+	- cd monitoring && $(MAKE) destroy
+	@echo ""
+	@echo "🧨 Terraform 인프라 삭제 중..."
 	cd $(TF_DIR) && terraform destroy --auto-approve
 
 # ── Monitoring ───────────────────────────────────────────
