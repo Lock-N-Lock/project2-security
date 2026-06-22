@@ -9,7 +9,8 @@
 # =============================================================
 ---
 - name: "PostgreSQL Replica DB 스택 정리 (teardown)"
-  hosts: lb-postgres-replica
+  hosts: localhost
+  connection: local
   become: true            # deploy(up)와 대칭: sudo 로 compose 제어
   gather_facts: false
   vars:
