@@ -10,17 +10,18 @@ export DOCKER_CONFIG := $(CURDIR)/.docker_config
 # 격리 폴더($(DOCKER_CONFIG))의 config.json에서 Docker Hub 로그인 ID 동적 파싱
 DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' $(DOCKER_CONFIG)/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
 
+DOCKER_USER_FALLBACK :=
 ifeq ($(DOCKER_USER),)
   DOCKER_USER := zeongni
+  DOCKER_USER_FALLBACK := 1
 endif
 
 TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
-.PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app service build-push build-push-bootstrap
+.PHONY: help setup check init fmt validate plan apply apply-auto output destroy destroy-db clean deploy-db deploy-app service build-push build-push-bootstrap
 .PHONY: monitoring-bootstrap monitoring-nginx-logs monitoring-service full-service
 
-# 기본 실행 (make)
 help:
 	@echo ""
 	@echo "====================================================="
@@ -36,20 +37,21 @@ help:
 	@echo "  make fmt         코드 포맷 정리 (terraform fmt)"
 	@echo "  make validate    문법 검증 (terraform validate)"
 	@echo "  make plan        변경 미리보기 (적용 안 함)"
-	@echo "  make apply  	  인프라 생성 (확인 프롬프트)"
+	@echo "  make apply       인프라 생성 (확인 프롬프트)"
 	@echo "  make apply-auto  인프라 생성 (자동 승인)"
 	@echo "  make deploy-db   DB 컨테이너 배포 (apply 이후, proj-mgmt)"
 	@echo "  make service     인프라 + DB 한 번에 (apply-auto + deploy-db)"
 	@echo "  make output      생성된 IP·ID 출력"
-	@echo "  make destroy     Monitoring + 인프라 전체 삭제 (자동 승인)"
 	@echo ""
 	@echo "  [ Monitoring ]"
 	@echo "  make monitoring-bootstrap   Monitoring Stack 초기 구성"
-	@echo "  make monitoring-nginx-logs  AWS Nginx Log Backup 설정"
-	@echo "  make monitoring-service     Monitoring 전체 구성"
+	@echo "  make monitoring-nginx-logs  AWS Nginx Log Backup(:9105) 설정"
+	@echo "  make monitoring-service     Monitoring 전체 구성 (bootstrap + nginx-logs)"
 	@echo "  make full-service           인프라 + DB + Monitoring 전체 구성"
 	@echo ""
 	@echo "  [ 정리 ]"
+	@echo "  make destroy-db  Replica DB 스택만 정리 (compose down -v)"
+	@echo "  make destroy     Monitoring(AWS+컨테이너) + DB + 인프라 전체 삭제"
 	@echo "  make clean       자동 생성 파일 삭제 (state·키 등)"
 	@echo ""
 
@@ -125,9 +127,11 @@ deploy-app:
 	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "bash /opt/lockbank/scripts/set-fail2ban.sh"
 
 build-push:
+	@if [ -n "$(DOCKER_USER_FALLBACK)" ]; then echo "⚠️  Docker config 파싱 실패 → 기본값 'zeongni'로 push합니다. docker login 후 재실행을 권장합니다."; fi
 	@DOCKER_USER=$(DOCKER_USER) ./scripts/build-push-image.sh
 
 build-push-bootstrap:
+	@if [ -n "$(DOCKER_USER_FALLBACK)" ]; then echo "⚠️  Docker config 파싱 실패 → 기본값 'zeongni'로 push합니다. docker login 후 재실행을 권장합니다."; fi
 	docker build \
 	-f docker/bootstrap/Dockerfile \
 	-t $(DOCKER_USER)/lock-bootstrap:latest .
@@ -142,12 +146,21 @@ output:
 	cd $(TF_DIR) && terraform output
 	@echo ""
 
+destroy-db:   ## replica DB 스택(compose) 정리 — down -v (proj-mgmt 로컬)
+	cd $(TF_DIR2) && ansible-playbook db-destroy.yml
+
 destroy:
 	@echo ""
 	@echo "⚠️  Terraform 인프라 및 Monitoring Stack이 삭제됩니다."
 	@echo ""
-	@echo "🧹 Monitoring Stack 정리 중..."
+	@echo "🧹 Monitoring AWS 리소스(Lambda/IAM/Alarm/SNS구독) 정리 중..."
+	- cd monitoring && $(MAKE) teardown-force
+	@echo ""
+	@echo "🧹 Monitoring Stack(컨테이너/볼륨) 정리 중..."
 	- cd monitoring && $(MAKE) destroy
+	@echo ""
+	@echo "🧹 Replica DB 스택(컨테이너/볼륨) 정리 중..."
+	- $(MAKE) destroy-db
 	@echo ""
 	@echo "🧨 Terraform 인프라 삭제 중..."
 	cd $(TF_DIR) && terraform destroy --auto-approve
@@ -157,11 +170,14 @@ monitoring-bootstrap:
 	cd monitoring && $(MAKE) bootstrap
 
 monitoring-nginx-logs:
+	@echo "🔐 nginx 로그 백업 설정에 sudo 권한이 필요합니다."
+	@sudo -v
 	sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh
 
 monitoring-service: monitoring-bootstrap monitoring-nginx-logs
 
 full-service:
+	@sudo -v
 	$(MAKE) service
 	$(MAKE) monitoring-service
 

@@ -1,0 +1,41 @@
+# =============================================================
+# db-destroy.yml — PostgreSQL 복제본(Replica) DB 스택 정리 플레이북
+# 파일위치 : ~/project2-security/infra/ansible/db-destroy.yml
+#
+# lb-postgres-replica.yml(deploy) 의 짝(teardown).
+# proj-mgmt 로컬(ansible_connection: local)에서 docker compose down -v 로
+# replica 컨테이너 + pgdata_replica 볼륨을 깨끗이 제거한다.
+#   대상 컨테이너: lb-postgres-replica / lb-db-node-exporter / lb-db-postgres-exporter
+# =============================================================
+---
+- name: "PostgreSQL Replica DB 스택 정리 (teardown)"
+  hosts: localhost
+  connection: local
+  become: true            # deploy(up)와 대칭: sudo 로 compose 제어
+  gather_facts: false
+  vars:
+    compose_dir: /home/user1/postgres
+  tasks:
+    - name: "compose 파일 존재 확인"
+      ansible.builtin.stat:
+        path: "{{ compose_dir }}/docker-compose.yaml"
+      register: compose_file
+
+    - name: "Replica 스택 종료 및 볼륨 삭제 (down -v)"
+      ansible.builtin.command:
+        cmd: docker compose down -v --remove-orphans
+        chdir: "{{ compose_dir }}"
+      when: compose_file.stat.exists
+      register: down_result
+      changed_when: down_result.rc == 0
+
+    - name: "[skip 안내] compose 파일이 없으면 정리할 스택 없음"
+      ansible.builtin.debug:
+        msg: "{{ compose_dir }}/docker-compose.yaml 없음 — 이미 정리되었거나 미배포 상태."
+      when: not compose_file.stat.exists
+
+    - name: "compose 디렉토리 제거 (잔여 파일 정리)"
+      ansible.builtin.file:
+        path: "{{ compose_dir }}"
+        state: absent
+      when: compose_file.stat.exists
