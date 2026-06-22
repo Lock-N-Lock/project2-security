@@ -95,4 +95,6 @@ fail2ban_currently_banned_ratelimit ${F2B_RATELIMIT_BANNED}
 fail2ban_currently_banned_total ${F2B_TOTAL_BANNED}
 METRICS
 
-cat "$OUT"
+if [ "${DEBUG_METRICS:-0}" = "1" ]; then
+  cat "$OUT"
+fi
