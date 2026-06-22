@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap up down restart logs ps
+.PHONY: help bootstrap up down restart logs ps destroy
 
 COMPOSE=docker compose --env-file .env --env-file .env.generated -f docker-compose.monitoring.yaml
 
@@ -33,6 +33,9 @@ help:
 	@echo "  make ps"
 	@echo "    - 컨테이너 상태 확인"
 	@echo ""
+	@echo "  make destroy"
+	@echo "    - 모니터링 스택 종료 및 볼륨 삭제"
+	@echo ""
 
 bootstrap:
 	@chmod +x bootstrap_monitoring.sh
@@ -40,7 +43,7 @@ bootstrap:
 
 up:
 	@test -f .env.generated || (echo "[ERROR] .env.generated 파일이 없습니다. 먼저 make bootstrap을 실행하세요."; exit 1)
-	$(COMPOSE) up -d
+	$(COMPOSE) up -d --build --force-recreate --remove-orphans
 
 down:
 	$(COMPOSE) down
@@ -56,3 +59,11 @@ logs:
 ps:
 	@test -f .env.generated || (echo "[ERROR] .env.generated 파일이 없습니다. 먼저 make bootstrap을 실행하세요."; exit 1)
 	$(COMPOSE) ps
+
+destroy:
+	@if [ -f .env.generated ]; then \
+		$(COMPOSE) down -v --remove-orphans; \
+	else \
+		echo "[WARN] .env.generated 파일이 없습니다. 기본 env로 모니터링 스택 정리를 시도합니다."; \
+		docker compose --env-file .env -f docker-compose.monitoring.yaml down -v --remove-orphans; \
+	fi

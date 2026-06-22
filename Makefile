@@ -18,6 +18,7 @@ TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
 .PHONY: help setup check init fmt validate plan apply apply-auto output destroy clean deploy-db deploy-app service build-push build-push-bootstrap
+.PHONY: monitoring-bootstrap monitoring-nginx-logs monitoring-service full-service
 
 # 기본 실행 (make)
 help:
@@ -40,7 +41,13 @@ help:
 	@echo "  make deploy-db   DB 컨테이너 배포 (apply 이후, proj-mgmt)"
 	@echo "  make service     인프라 + DB 한 번에 (apply-auto + deploy-db)"
 	@echo "  make output      생성된 IP·ID 출력"
-	@echo "  make destroy     인프라 전체 삭제 (자동 승인)"
+	@echo "  make destroy     Monitoring + 인프라 전체 삭제 (자동 승인)"
+	@echo ""
+	@echo "  [ Monitoring ]"
+	@echo "  make monitoring-bootstrap   Monitoring Stack 초기 구성"
+	@echo "  make monitoring-nginx-logs  AWS Nginx Log Backup 설정"
+	@echo "  make monitoring-service     Monitoring 전체 구성"
+	@echo "  make full-service           인프라 + DB + Monitoring 전체 구성"
 	@echo ""
 	@echo "  [ 정리 ]"
 	@echo "  make clean       자동 생성 파일 삭제 (state·키 등)"
@@ -137,9 +144,26 @@ output:
 
 destroy:
 	@echo ""
-	@echo "⚠️  모든 인프라가 삭제됩니다. 실습 후 비용 절감용."
+	@echo "⚠️  Terraform 인프라 및 Monitoring Stack이 삭제됩니다."
 	@echo ""
+	@echo "🧹 Monitoring Stack 정리 중..."
+	- cd monitoring && $(MAKE) destroy
+	@echo ""
+	@echo "🧨 Terraform 인프라 삭제 중..."
 	cd $(TF_DIR) && terraform destroy --auto-approve
+
+# ── Monitoring ───────────────────────────────────────────
+monitoring-bootstrap:
+	cd monitoring && $(MAKE) bootstrap
+
+monitoring-nginx-logs:
+	sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh
+
+monitoring-service: monitoring-bootstrap monitoring-nginx-logs
+
+full-service:
+	$(MAKE) service
+	$(MAKE) monitoring-service
 
 # ── 정리 ──────────────────────────────────────────────────
 # 주의: .terraform.lock.hcl 은 팀 버전 고정용이라 삭제하지 않습니다(커밋 대상).

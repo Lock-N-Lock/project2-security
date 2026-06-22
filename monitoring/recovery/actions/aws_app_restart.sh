@@ -79,9 +79,11 @@ fi
 if [ -n "$DB_HOST_REPLICA" ] && ! check_tcp "$DB_HOST_REPLICA" "$DB_PORT"; then
   echo "WARN: replica DB is not reachable: ${DB_HOST_REPLICA}:${DB_PORT}"
 
-  if sudo docker ps -a --format "{{.Names}}" | grep -qx "$DB_REPLICA_CONTAINER"; then
+  if command -v docker >/dev/null 2>&1 && docker ps -a --format "{{.Names}}" | grep -qx "$DB_REPLICA_CONTAINER"; then
     echo "INFO: starting local replica DB container: ${DB_REPLICA_CONTAINER}"
-    sudo docker start "$DB_REPLICA_CONTAINER" >/dev/null || true
+    docker start "$DB_REPLICA_CONTAINER" >/dev/null || true
+  else
+    echo "WARN: local replica DB container not found or docker command unavailable: ${DB_REPLICA_CONTAINER}"
   fi
 
   if ! wait_tcp "$DB_HOST_REPLICA" "$DB_PORT" 10; then
