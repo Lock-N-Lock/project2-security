@@ -150,7 +150,10 @@ destroy:
 	@echo ""
 	@echo "⚠️  Terraform 인프라 및 Monitoring Stack이 삭제됩니다."
 	@echo ""
-	@echo "🧹 Monitoring Stack 정리 중..."
+	@echo "🧹 Monitoring AWS 리소스(Lambda/IAM/Alarm/SNS구독) 정리 중..."
+	- cd monitoring && $(MAKE) teardown-force
+	@echo ""
+	@echo "🧹 Monitoring Stack(컨테이너/볼륨) 정리 중..."
 	- cd monitoring && $(MAKE) destroy
 	@echo ""
 	@echo "🧨 Terraform 인프라 삭제 중..."

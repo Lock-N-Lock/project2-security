@@ -4,9 +4,11 @@
 # 사용법: (~/project2-security/monitoring)에서  make [명령어]
 # =============================================================
 .DEFAULT_GOAL := help
-.PHONY: help bootstrap up down restart logs ps destroy
+.PHONY: help bootstrap up down restart logs ps destroy teardown teardown-force
 
 COMPOSE=docker compose --env-file .env --env-file .env.generated -f docker-compose.monitoring.yaml
+# bootstrap 이 Terraform 밖에서 만든 AWS 리소스(Lambda/IAM/Alarm/구독) 정리
+TEARDOWN_SCRIPT=lambda/cloudwatch-telegram-notifier/teardown_cloudwatch_telegram_lambda.sh
 
 help:
 	@echo ""
@@ -80,3 +82,11 @@ destroy:
 		echo "[WARN] .env.generated 파일이 없습니다. 기본 env로 모니터링 스택 정리를 시도합니다."; \
 		docker compose --env-file .env -f docker-compose.monitoring.yaml down -v --remove-orphans; \
 	fi
+
+teardown:        ## 삭제 대상만 표시 (dry-run, 안전)
+	@chmod +x $(TEARDOWN_SCRIPT)
+	bash $(TEARDOWN_SCRIPT)
+
+teardown-force:  ## 실제 삭제 (--force)
+	@chmod +x $(TEARDOWN_SCRIPT)
+	bash $(TEARDOWN_SCRIPT) --force
