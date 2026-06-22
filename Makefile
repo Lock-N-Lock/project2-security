@@ -10,8 +10,10 @@ export DOCKER_CONFIG := $(CURDIR)/.docker_config
 # 격리 폴더($(DOCKER_CONFIG))의 config.json에서 Docker Hub 로그인 ID 동적 파싱
 DOCKER_USER := $(shell jq -r '.auths["https://index.docker.io/v1/"].auth' $(DOCKER_CONFIG)/config.json 2>/dev/null | base64 -d 2>/dev/null | cut -d: -f1)
 
+DOCKER_USER_FALLBACK :=
 ifeq ($(DOCKER_USER),)
   DOCKER_USER := zeongni
+  DOCKER_USER_FALLBACK := 1
 endif
 
 TF_DIR := infra/terraform
@@ -125,9 +127,11 @@ deploy-app:
 	ssh -i infra/terraform/lb-key.pem ec2-user@$$APP_IP "bash /opt/lockbank/scripts/set-fail2ban.sh"
 
 build-push:
+	@if [ -n "$(DOCKER_USER_FALLBACK)" ]; then echo "⚠️  Docker config 파싱 실패 → 기본값 'zeongni'로 push합니다. docker login 후 재실행을 권장합니다."; fi
 	@DOCKER_USER=$(DOCKER_USER) ./scripts/build-push-image.sh
 
 build-push-bootstrap:
+	@if [ -n "$(DOCKER_USER_FALLBACK)" ]; then echo "⚠️  Docker config 파싱 실패 → 기본값 'zeongni'로 push합니다. docker login 후 재실행을 권장합니다."; fi
 	docker build \
 	-f docker/bootstrap/Dockerfile \
 	-t $(DOCKER_USER)/lock-bootstrap:latest .
@@ -157,11 +161,14 @@ monitoring-bootstrap:
 	cd monitoring && $(MAKE) bootstrap
 
 monitoring-nginx-logs:
+	@echo "🔐 nginx 로그 백업 설정에 sudo 권한이 필요합니다."
+	@sudo -v
 	sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh
 
 monitoring-service: monitoring-bootstrap monitoring-nginx-logs
 
 full-service:
+	@sudo -v
 	$(MAKE) service
 	$(MAKE) monitoring-service
 

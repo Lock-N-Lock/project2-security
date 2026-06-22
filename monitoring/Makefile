@@ -1,3 +1,8 @@
+# =============================================================
+# 파일위치 : ~/project2-security/monitoring/Makefile
+# Lock & Lock 팀 프로젝트 monitoring/Makefile
+# 사용법: (~/project2-security/monitoring)에서  make [명령어]
+# =============================================================
 .DEFAULT_GOAL := help
 .PHONY: help bootstrap up down restart logs ps destroy
 
@@ -40,13 +45,21 @@ help:
 bootstrap:
 	@chmod +x bootstrap_monitoring.sh
 	bash ./bootstrap_monitoring.sh
+	@echo ""
+	@echo "ℹ️  참고: nginx 로그 메트릭(:9105)은 이 타깃에 포함되지 않습니다 (별도 sudo 권한 필요)."
+	@echo "    전체 구성은 프로젝트 루트에서 'make monitoring-service' 또는 'make full-service'를 실행하세요."
 
 up:
 	@test -f .env.generated || (echo "[ERROR] .env.generated 파일이 없습니다. 먼저 make bootstrap을 실행하세요."; exit 1)
 	$(COMPOSE) up -d --build --force-recreate --remove-orphans
 
 down:
-	$(COMPOSE) down
+	@if [ -f .env.generated ]; then \
+		$(COMPOSE) down; \
+	else \
+		echo "[WARN] .env.generated 파일이 없습니다. 기본 env로 모니터링 스택 정리를 시도합니다."; \
+		docker compose --env-file .env -f docker-compose.monitoring.yaml down; \
+	fi
 
 restart:
 	@test -f .env.generated || (echo "[ERROR] .env.generated 파일이 없습니다. 먼저 make bootstrap을 실행하세요."; exit 1)
