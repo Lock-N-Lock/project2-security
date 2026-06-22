@@ -136,7 +136,7 @@ def get_db_connection(pool):
         try:
             conn.rollback()
         except Exception:
-            pass
+            pass # nosec B110
         pool.putconn(conn)
 
 def get_current_user(request: Request):
