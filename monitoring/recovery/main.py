@@ -112,6 +112,8 @@ def run_recovery_task(
     verify,
     retry,
     notify_success=False,
+    verify_delay=2,
+    retry_interval=2,
 ):
     verify = verify or {}
     target = target or "unknown"
@@ -120,6 +122,7 @@ def run_recovery_task(
 
     recovery_started_ts = time.time()
     recovery_started_at = time.strftime("%Y-%m-%d %H:%M:%S")
+    failure_stage = "action"
 
     try:
         for attempt in range(1, retry + 1):
@@ -138,13 +141,15 @@ def run_recovery_task(
                 write_recovery_log(
                     f"action failed: {alertname}, attempt={attempt}/{retry}"
                 )
-                time.sleep(2)
+                time.sleep(retry_interval)
                 continue
 
+            # action이 성공한 경우에만 단계를 "verify"로 변경
+            failure_stage = "verify"
             write_recovery_log(
                 f"action success: {alertname}, attempt={attempt}/{retry}"
             )
-            time.sleep(2)
+            time.sleep(verify_delay)
 
             if verify.get("type") == "http":
                 verify_url = verify.get("url")
@@ -188,7 +193,7 @@ def run_recovery_task(
                 write_recovery_log(
                     f"verify failed: {alertname}, attempt={attempt}/{retry}"
                 )
-                time.sleep(2)
+                time.sleep(retry_interval)
                 continue
 
             if verify.get("type") == "command":
@@ -219,10 +224,12 @@ def run_recovery_task(
                 write_recovery_log(
                     f"verify failed: {alertname}, attempt={attempt}/{retry}"
                 )
-                time.sleep(2)
+                time.sleep(retry_interval)
                 continue
 
-            write_recovery_log(f"verify skipped: {alertname}")
+            write_recovery_log(
+                f"verify skipped: {alertname}, attempt={attempt}/{retry}"
+            )
             update_and_save_state(lock_key, time.time())
             return
 
@@ -234,7 +241,7 @@ def run_recovery_task(
             target,
             retry,
             "Service health verification failed after recovery action",
-            failure_stage="verify",
+            failure_stage=failure_stage
         )
         update_and_save_state(lock_key, time.time())
 
@@ -360,7 +367,9 @@ def webhook(payload: dict, background_tasks: BackgroundTasks):
         command,
         verify,
         retry,
-        policy.get("notify_success", False),
+        notify_success=policy.get("notify_success", False),
+        verify_delay=int(policy.get("verify_delay", 2)),      # 정책의 verify_delay 반영
+        retry_interval=int(policy.get("retry_interval", 2)),  # 정책의 retry_interval 반영
     )
 
     return {

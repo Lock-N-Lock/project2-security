@@ -77,7 +77,6 @@ define TF_WITH_TS
 	fi; \
 	echo "✅ Detected Replica DB Tailscale IP: $$REPLICA_TS_IP"; \
 	export TF_VAR_db_host_replica=$$REPLICA_TS_IP; \
-	export TF_VAR_app_image=$(DOCKER_USER)/lock-app:latest; \
 	export TF_VAR_docker_user=$(DOCKER_USER); \
 	cd $(TF_DIR) &&
 endef
@@ -102,7 +101,7 @@ apply-auto:
 
 # ── Ansible (DB 배포) ─────────────────────────────────────
 deploy-db:   ## proj-mgmt에서 DB 컨테이너 배포 (terraform apply 이후)
-	@REAL_DB_IP=$$(tailscale status | grep -E "lb-db(-[0-9]+)?" | grep -v "offline" | awk '{print $$1}'); \
+	@REAL_DB_IP=$$(tailscale status | grep -E "lb-db(-[0-9]+)?" | grep -v "offline" | awk '{print $$1}' | head -n 1); \
 	if [ -n "$$REAL_DB_IP" ]; then \
 		echo "🔄 Updating database IP in inventory.yml to active Tailscale IP: $$REAL_DB_IP"; \
 		sed -i "s/100\.[0-9]\+\.[0-9]\+\.[0-9]\+/$$REAL_DB_IP/g" $(TF_DIR2)/inventory.yml; \
