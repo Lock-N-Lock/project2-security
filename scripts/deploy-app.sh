@@ -26,7 +26,7 @@ docker run -d --restart=always --net lb-net --name lb-fastapi \
   -e DB_USER=lb-user \
   -e DB_PASSWORD=lb-user \
   -e DB_NAME=lb-db \
-  -e SECRET_KEY=change-me \
+  -e SECRET_KEY=${SECRET_KEY:-$(openssl rand -hex 32)} \
   "${DOCKER_USER}/lock-app:latest"
 
 docker run -d --restart=always --net lb-net --name lb-security-nginx \

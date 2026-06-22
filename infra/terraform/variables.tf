@@ -163,10 +163,6 @@ variable "admin_ingress_cidr" {
   # default 제거 → 미입력 시 에러로 강제 (0.0.0.0/0 사고 방지)
 }
 
-variable "app_image" {
-  description = "FastAPI 애플리케이션의 Docker 이미지 경로 (Makefile 등에서 자동 주입)"
-  type        = string
-}
 
 variable "db_host_replica" {
   description = "Replica DB의 IP (Tailscale IP)"

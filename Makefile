@@ -70,7 +70,6 @@ define TF_WITH_TS
 	fi; \
 	echo "✅ Detected Replica DB Tailscale IP: $$REPLICA_TS_IP"; \
 	export TF_VAR_db_host_replica=$$REPLICA_TS_IP; \
-	export TF_VAR_app_image=$(DOCKER_USER)/lock-app:latest; \
 	export TF_VAR_docker_user=$(DOCKER_USER); \
 	cd $(TF_DIR) &&
 endef
