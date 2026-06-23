@@ -18,6 +18,8 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
+            terraform_updated:
+              - 'infra/terraform/**'
             docker_updated:
               - 'docker/app/Dockerfile'       # 도커 빌드 메커니즘 변경 시
               - 'docker/docker-compose.yaml'  # 컨테이너 구성 변경 시
@@ -32,6 +34,7 @@ jobs:
      
       # 3. init & plan 실행 (배포 X, 안전한 테스트 단계)
       - name: Terraform Init and Plan
+        if: steps.changes.outputs.terraform_updated == 'true'   # terraform 변경 시에만 plan (문서 push 시 skip)
         working-directory: ./infra/terraform
         env:
           # 각 Environment(팀원별 환경)에 저장된 공통 이름의 Secret을 주입합니다.
@@ -118,4 +121,3 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:${{ github.run_number }}
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/lock-app:latest
-
