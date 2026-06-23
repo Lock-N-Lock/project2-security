@@ -172,7 +172,15 @@ monitoring-bootstrap:
 monitoring-nginx-logs:
 	@echo "🔐 nginx 로그 백업 설정에 sudo 권한이 필요합니다."
 	@sudo -v
-	sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh
+	@sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh; \
+	rc=$$?; \
+	if [ "$$rc" = "141" ]; then \
+		echo "[WARN] setup_aws_nginx_log_backup.sh exited with 141(SIGPIPE), but services may already be active. Continuing."; \
+		exit 0; \
+	elif [ "$$rc" -ne 0 ]; then \
+		exit $$rc; \
+	fi
+
 
 monitoring-service: monitoring-bootstrap monitoring-nginx-logs
 

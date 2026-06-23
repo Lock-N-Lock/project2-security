@@ -221,7 +221,7 @@ GRAFANA_BASE_PATH="/grafana"
 GRAFANA_DASHBOARD_UID="dfodmd3s8ecqoc"
 GRAFANA_DASHBOARD_SLUG="lockbank-security-and-operations-dashboard"
 GRAFANA_ORG_ID="1"
-GRAFANA_TIME_FROM="now-24h"
+GRAFANA_TIME_FROM="now-30m"
 GRAFANA_TIME_TO="now"
 GRAFANA_THEME="light"
 
