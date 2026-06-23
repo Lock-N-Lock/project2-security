@@ -87,13 +87,44 @@ fi
 FAIL2BAN_LOG_FILE="${FAIL2BAN_LOG_FILE:-${MONITORING_DIR}/logs/aws-nginx/fail2ban.log}"
 FAIL2BAN_STATE_FILE="${FAIL2BAN_STATE_FILE:-${MONITORING_DIR}/logs/fail2ban-events.state}"
 
+APP_HOST="${APP_HOST:-$(tailscale status 2>/dev/null | awk '/lb-app-i-/ && $0 !~ /offline/ {print $1; exit}')}"
+APP_USER="${APP_USER:-ec2-user}"
+SSH_KEY="${SSH_KEY:-${PROJECT_DIR:-$(pwd)}/infra/terraform/lb-key.pem}"
+REMOTE_FAIL2BAN_LOG_FILE="${REMOTE_FAIL2BAN_LOG_FILE:-/var/log/fail2ban.log}"
+FAIL2BAN_RUNTIME_LOG_FILE="$FAIL2BAN_LOG_FILE"
+
+fetch_remote_fail2ban_log() {
+  if [ -z "${APP_HOST}" ] || [ ! -f "${SSH_KEY}" ]; then
+    return 0
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+
+  if sudo ssh -i "${SSH_KEY}" \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      -o ConnectTimeout=5 \
+      -o BatchMode=yes \
+      "${APP_USER}@${APP_HOST}" \
+      "sudo test -f '${REMOTE_FAIL2BAN_LOG_FILE}' && sudo cat '${REMOTE_FAIL2BAN_LOG_FILE}'" > "$tmp" 2>/dev/null; then
+    FAIL2BAN_RUNTIME_LOG_FILE="$tmp"
+  else
+    rm -f "$tmp"
+  fi
+}
+
 process_fail2ban_events() {
-  [ -f "$FAIL2BAN_LOG_FILE" ] || return 0
+  fetch_remote_fail2ban_log
+  [ -f "$FAIL2BAN_RUNTIME_LOG_FILE" ] || return 0
   local last_line total start
-  total="$(wc -l < "$FAIL2BAN_LOG_FILE")"
+  total="$(wc -l < "$FAIL2BAN_RUNTIME_LOG_FILE")"
 
   if [ ! -f "$FAIL2BAN_STATE_FILE" ]; then
     echo "$total" > "$FAIL2BAN_STATE_FILE"
+    if [ "$FAIL2BAN_RUNTIME_LOG_FILE" != "$FAIL2BAN_LOG_FILE" ]; then
+      rm -f "$FAIL2BAN_RUNTIME_LOG_FILE"
+    fi
     return 0
   fi
 
@@ -105,7 +136,7 @@ process_fail2ban_events() {
 
   start=$((last_line + 1))
 
-  tail -n +"$start" "$FAIL2BAN_LOG_FILE" | while read -r line; do
+  tail -n +"$start" "$FAIL2BAN_RUNTIME_LOG_FILE" | while read -r line; do
     if [[ "$line" =~ \[([^]]+)\]\ Ban\ ([0-9a-fA-F:.]+) ]]; then
       jail="${BASH_REMATCH[1]}"
       ip="${BASH_REMATCH[2]}"
@@ -118,6 +149,9 @@ process_fail2ban_events() {
   done
 
   echo "$total" > "$FAIL2BAN_STATE_FILE"
+  if [ "$FAIL2BAN_RUNTIME_LOG_FILE" != "$FAIL2BAN_LOG_FILE" ]; then
+    rm -f "$FAIL2BAN_RUNTIME_LOG_FILE"
+  fi
 }
 
 process_fail2ban_events
