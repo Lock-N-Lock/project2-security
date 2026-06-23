@@ -62,7 +62,7 @@ jobs:
             -backend-config="dynamodb_table=${{ secrets.MY_TABLE }}" \
             -backend-config="region=ap-northeast-2"
 
-          terraform plan
+          terraform plan -var="dns_provider=none"
 
       # 4. 도커 허브 로그인 (변화가 있을 때만)
       - name: Login to Docker Hub
