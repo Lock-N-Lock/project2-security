@@ -570,7 +570,17 @@
                         </div>
                     </div>
 
-                    <div class="stat-grid compact">
+                    <div class="stat-grid">
+                        <div class="card stat">
+                            <div class="card-title">
+                                <i class="fa-solid fa-shield-halved"></i>
+                                Blocked IP Count
+                            </div>
+                            <iframe
+                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=20&theme=${GRAFANA_THEME}">
+                            </iframe>
+                        </div>
+
                         <div class="card stat">
                             <div class="card-title">
                                 <i class="fa-solid fa-server"></i>
@@ -589,6 +599,13 @@
                             <iframe
                                 src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=16&theme=${GRAFANA_THEME}">
                             </iframe>
+                        </div>
+                    </div>
+                    <div class="log-grid compact-log">
+                        <div class="card wide">
+                            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Unified Event Timeline</div>
+                            <iframe
+                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=2&theme=${GRAFANA_THEME}"></iframe>
                         </div>
                     </div>
                 </section>
@@ -669,21 +686,35 @@
         </main>
     </div>
 
-    <script>
-        function showSection(sectionId, button) {
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.remove('active');
-            });
+<script>
+    function showSection(sectionId, button) {
+        document.querySelectorAll('.section').forEach(section => {
+            section.classList.remove('active');
+        });
 
-            document.getElementById(sectionId).classList.add('active');
+        document.getElementById(sectionId).classList.add('active');
 
-            document.querySelectorAll('.menu button').forEach(item => {
-                item.classList.remove('active');
-            });
+        document.querySelectorAll('.menu button').forEach(item => {
+            item.classList.remove('active');
+        });
 
-            button.classList.add('active');
-        }
-    </script>
+        button.classList.add('active');
+
+        localStorage.setItem('activeSection', sectionId);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem('activeSection') || 'overview';
+        const button = document.querySelector(`button[onclick*="'${saved}'"]`);
+        if (button) showSection(saved, button);
+
+        document.querySelectorAll('iframe').forEach(iframe => {
+            const url = new URL(iframe.src, window.location.origin);
+            url.searchParams.set('refresh', '5s');
+            iframe.src = url.toString();
+        });
+    });
+</script>
 </body>
 
 </html>
