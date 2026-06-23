@@ -30,8 +30,8 @@ groups:
           description: LockBank /health probe via Nginx is failed.
 
       - alert: HighLoginFailureRate
-        expr: nginx_login_401_count >= 5
-        for: 30s
+        expr: nginx_login_401_count >= 3
+        for: 10s
         labels:
           severity: warning
           category: security
