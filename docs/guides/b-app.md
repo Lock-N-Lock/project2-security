@@ -111,7 +111,7 @@ make build-push                        # Docker Hub push (lock-app)
 
 ## 6. 트러블슈팅 / 알려진 이슈
 
-- **DB env 미주입 시 `127.0.0.1` 기본값** → 컨테이너 단독 실행 시 DB 연결 실패. 배포는 `deploy-app.sh`가 env 주입.
+- **DB env 미주입 시 `127.0.0.1` 기본값** → 컨테이너 단독 실행 시 DB 연결 실패. 배포는 `scripts/deploy-app.sh`가 env 주입.
 - **`SECRET_KEY` 기본값 `change-me-in-production`** → 운영 시 반드시 주입(세션 위조 방지).
 - **포트 주의**: 앱 `8080`, Nginx `80`. metrics는 `8080/metrics`.
 - **`get_server_info()`의 EC2 메타데이터 조회는 주석 처리** → 현재 hostname 반환(IMDS 호출 비활성).

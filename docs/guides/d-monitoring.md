@@ -125,7 +125,7 @@ curl -s localhost:9105/nginx_log_metrics.prom | head   # nginx 로그 메트릭
 - **`:9105`는 `bootstrap`에 미포함** → 루트 `make monitoring-service`/`full-service` 사용(디렉토리 직접 `make bootstrap`만 하면 빈 패널 재발).
 - **`prometheus.yaml`·dashboard json이 실행마다 런타임 IP 주입으로 git-dirty** → 커밋 금지(`git restore`). 근본 해결은 `.j2` 템플릿 분리(후속 과제).
 - **AWS 리소스 정리**: `bootstrap`이 만든 Lambda/IAM/CW알람은 `make teardown-force`로 정리(루트 `make destroy`가 자동 호출). SNS topic은 Terraform 소관.
-- **PostgresDown(복구) 정책 미정**: `recovery_map.yaml`에 추후 결정 표기.
+- **PostgresDown(복구) 정책 미정**: `monitoring/recovery/config/recovery_map.yaml`에 추후 결정 표기.
 
 ---
 

@@ -120,7 +120,7 @@ sudo fail2ban-client status nginx-login
 ## 6. 트러블슈팅 / 알려진 이슈
 
 - **fail2ban은 로그 기반** → Nginx `log-format.conf`가 바뀌면 `filters.d`의 정규식도 같이 수정 필요.
-- **rate limit 429 vs fail2ban ban 구분**: 429는 일시 거절(nginx), ban은 iptables 차단(fail2ban). 둘의 findtime/maxretry 튜닝은 `rate-limit-policy.md` 참조.
+- **rate limit 429 vs fail2ban ban 구분**: 429는 일시 거절(nginx), ban은 iptables 차단(fail2ban). 둘의 findtime/maxretry 튜닝은 `security/policies/rate-limit-policy.md` 참조.
 - **차단 IP 해제**: `sudo fail2ban-client set <jail> unbanip <IP>` (데모 reset 시).
 - **공격 호스트 자기 차단 주의**: 같은 IP로 공격·관리 동시 시 SSH까지 막힐 수 있음 → 관리 IP는 화이트리스트 검토.
 
