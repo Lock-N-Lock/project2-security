@@ -98,7 +98,7 @@ make service               # 빌드·푸시 + 인프라 + DB 통합
 
 ## 6. 트러블슈팅 / 알려진 이슈
 
-- **plan.yml은 `on: push`이며** paths-filter로 terraform/docker 변경 시에만 plan·빌드 실행(문서 push는 skip). PR 단위 게이트`(on: pull_request)`는 미적용 → 검토.
+- **plan.yml은 `on: push`이며** paths-filter로 terraform/docker 변경 시에만 plan·빌드 실행(문서 push는 skip). PR 단위 게이트 (`on: pull_request`)는 미적용 → 검토.
 - **ZAP은 관측 단계**(`fail_action:false`): Critical/High 발견 시 배포 차단 게이트로 승격 검토.
 - **bootstrap·nginx 이미지는 CI 자동 재빌드 부재**: 현재 `make build-push-bootstrap` 등 수동. lock-app만 CI가 빌드/푸시.
 - **Blue-Green 전환 자동화 폐기**: green ASG는 desired=0 예비로 유지하되, 무중단 전환 스크립트는 제거하고 4중 스캔 게이트로 차별화.
