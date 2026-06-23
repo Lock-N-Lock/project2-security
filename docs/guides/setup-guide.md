@@ -40,7 +40,7 @@ bash setup.sh
 
 > 입력 프롬프트가 뜨면 안내에 따라 키를 붙여넣으면 됩니다. 토큰은 화면에 표시되지 않습니다(정상).
 
-### STEP 2 — Tailscale 연결 (+ VXLAN 준비)
+### STEP 2 — Tailscale 연결
 
 ```bash
 ./bootstrap_tailscale.sh
@@ -50,7 +50,6 @@ bash setup.sh
 - `~/.tailscale_key` 없으면 Auth Key(필수) / API Key·tailnet 이름(선택) 입력받아 생성
 - Tailscale 가입 + `172.16.1.0/24` 서브넷 광고 (hostname은 머신별 자동)
 - API Key를 넣었으면 서브넷 라우트 **자동 승인**, 안 넣었으면 수동 승인 안내 출력
-- VXLAN은 이 시점엔 **건너뜀**(`ENABLE_VXLAN=false`) — Bastion 생성 후 별도 적용
 
 > TAILNET_NAME은 노드 이름(proj-mgmt)이 아니라 **가입 이메일 전체**(예: `you@gmail.com`)입니다.
 
@@ -61,29 +60,10 @@ make check        # 또는 bash check.sh
 ```
 
 `[1]~[5]`가 전부 ✅이면 준비 완료입니다.
-`[6] VXLAN`은 이 단계에서 ⚠️가 **정상**입니다 (아래 2번 참고).
 
 ---
 
-## 2. VXLAN은 왜 아직 ⚠️ 인가 (정상입니다)
-
-VXLAN은 proj-mgmt와 **AWS Bastion 양쪽**이 있어야 성립합니다. 아직 `terraform apply` 전이라 Bastion이 없으므로 `ENABLE_VXLAN=false`로 두는 게 맞습니다.
-
-Bastion 생성 후 적용 순서:
-
-```bash
-cd infra/terraform && terraform apply        # 1) Bastion 생성
-terraform output bastion_ts_ip               # 2) Bastion Tailscale IP 확인
-# 3) bootstrap_tailscale.sh 상단에서:
-#      ENABLE_VXLAN="true"
-#      AWS_BASTION_TS_IP="<위에서 확인한 100.x.x.x>"
-./bootstrap_tailscale.sh                      # 4) 재실행 → vxlan0 생성
-make check                                    # [6] 이 ✅ 로 바뀜
-```
-
----
-
-## 3. 시크릿 파일 관리
+## 2. 시크릿 파일 관리
 
 모든 개인 시크릿은 **홈 디렉터리(`~`) 아래, 권한 600, 레포 바깥**에 둡니다. 절대 커밋하지 않습니다.
 
@@ -97,7 +77,7 @@ make check                                    # [6] 이 ✅ 로 바뀜
 
 ---
 
-## 4. 자주 겪는 문제 (트러블슈팅)
+## 3. 자주 겪는 문제 (트러블슈팅)
 
 | 증상 | 원인 / 해결 |
 |---|---|
@@ -110,12 +90,12 @@ make check                                    # [6] 이 ✅ 로 바뀜
 
 ---
 
-## 5. 한 번에 보는 실행 요약
+## 4. 한 번에 보는 실행 요약
 
 ```bash
 cd ~/project2-security
 chmod +x setup.sh check.sh bootstrap_tailscale.sh   # 최초 1회
 bash setup.sh             # 도구 + AWS + Docker Hub
-./bootstrap_tailscale.sh  # Tailscale (+ VXLAN 준비)
-make check                # 점검 ([6] VXLAN ⚠️ 는 정상)
+./bootstrap_tailscale.sh  # Tailscale (노드-투-노드 L3)
+make check                # 점검 ([1]~[5] ✅)
 ```

@@ -6,7 +6,7 @@
 | 담당 | 신준한 (main) / 박정은 (sub) |
 | 디렉토리 | `infra/terraform/`, `infra/ansible/` |
 | State | S3 backend (개인 버킷 + DynamoDB lock) |
-| 최종 수정 | 2026-06-07 |
+| 최종 수정 | 2026-06-22 |
 
 ---
 
@@ -103,7 +103,7 @@ infra/terraform/
 | `provider.tf` | `terraform{}`, `provider aws/cloudflare/tailscale` | required_version ≥1.5, aws ~>5.0. S3 backend (backend.hcl 주입). `default_tags`로 전 리소스에 Project/ManagedBy/Track 태깅 |
 | `variables.tf` | 변수 30여 개 | 네트워크 CIDR·인스턴스 타입·ASG·DNS 토글·시크릿(sensitive)·exporter 포트. `dns_provider`/`admin_ingress_cidr` 검증 포함 |
 | `network.tf` | `aws_vpc`, `aws_internet_gateway`, `aws_subnet`(public/app/db, count), `aws_route_table`(public/private_app/private_db) | VPC 10.0.0.0/16. public=IGW, app=NAT(라우트는 compute.tf), **db=egress-only(NAT 경유)** |
-| `security_groups.tf` | `aws_security_group` alb/bastion/app/db/nat + `aws_security_group_rule` app_exporters | ALB→App(80)→DB(5432) 단방향. Bastion=SSH 관문. ⚠️ exporter/pg 룰은 제거됨(Tailscale로 대체) |
+| `security_groups.tf` | `aws_security_group` alb/bastion/app/db/nat | ALB→App(80)→DB(5432) 단방향. Bastion=SSH 관문. exporter/pg 인바운드 없음 — 모니터링·복제는 Tailscale 경유 |
 | `alb.tf` | `aws_lb`, `aws_lb_target_group` blue/green, `aws_lb_listener` http_redirect/http_forward/https | TG 포트 80, 헬스 `/health` 200. https 모드: 80→443 리다이렉트 + 443 forward. 443 리스너는 `ignore_changes=[default_action]`(배포 전환 보존) |
 | `compute.tf` | `data ssm al2023`, `aws_instance` nat/bastion/db, `aws_route` app_nat/**db_nat**, `aws_launch_template` app, `aws_autoscaling_group` blue/green | AMI=AL2023(SSM 최신). NAT=iptables MASQUERADE. Bastion=Tailscale 서브넷라우터. DB=Tailscale 노드+gp3 암호화. **db_nat = DB egress-only 경로** |
 | `iam.tf` | `aws_iam_role` db(+S3 정책·instance_profile), `aws_iam_user` grafana_cw(+CloudWatch read·access_key) | DB EC2가 S3에 pg_dump 업로드. Grafana(온프레)용 CloudWatch 읽기 키 발급 |
@@ -163,21 +163,21 @@ network (VPC·서브넷·라우팅)
 | 어디서 | 무엇을 | 상태 |
 |--------|--------|------|
 | 강사 가이드 | AMI(AL2023/SSM)·인스턴스 타입 정책 | 반영됨 |
-| B 트랙 | `/health → 200` 컨테이너(:80) + Docker Hub 이미지 | **ASG 0대 해제 조건** (≈6/8) |
-| B 트랙 | DB read/write 엔드포인트 env화 | 요청 |
-| D 트랙 | App 메트릭 scrape 경로(#3 — App을 Tailscale 노드로) | 결정: (a), 구현 예정 |
+| B 트랙 | `/health → 200` 컨테이너(:80) + Docker Hub 이미지 | **반영됨** (ASG desired=1 운영) |
+| B 트랙 | DB read/write 엔드포인트 env화 | 반영됨 |
+| D 트랙 | App 메트릭 scrape 경로(#3 — App을 Tailscale 노드로) | **구현됨** (app_join ephemeral·tag:app + tailscale-sd) |
 | E 트랙 | fail2ban 차단지점(NACL/nginx) | 정정 필요 |
 
 ---
 
 ## 6. 주요 설계 결정 (왜 이렇게 했나)
 
-- **local state**: 개인 AWS 계정 독립 실행 → S3 backend 불필요. `terraform.tfstate`는 로컬 보관·**커밋 금지**(`.gitignore *.tfstate`).
-- **App ASG 초기 0대(staging)**: `asg_min/desired=0`. 앱(`/health 200`) 배포 전 ELB 헬스체크가 인스턴스를 무한 교체(thrash)·비용 누수하는 것을 방지. **해제 조건**: B 이미지가 Docker Hub에 올라오면 `asg_min/desired=1` + launch template에 `docker pull/run` 추가.
+- **S3 remote backend**: 개인별 S3 버킷 + DynamoDB lock(`init/`로 부트스트랩, `backend.hcl` 주입). 상태 공유·동시성 제어. `*.tfstate`는 **커밋 금지**(`.gitignore`).
+- **App ASG 운영(desired=1)**: 초기엔 앱 이미지 배포 전 ELB 헬스체크 thrash·비용 누수 방지를 위해 0대 staging이었으나, B 이미지가 Docker Hub에 올라온 후 `asg_min/desired=1` + launch template user_data(bootstrap 이미지 `docker run`)로 **해제 완료**. green은 desired=0 예비.
 - **DB egress-only**: 인바운드 0, 아웃바운드만 NAT 경유(`aws_route.db_nat`). 패키지·pg_dump 업로드용. 인터넷에서 DB로 들어오는 경로는 없음.
 - **NAT instance(≠NAT GW)**: 비용 절감. `source_dest_check=false` + iptables MASQUERADE.
 - **Tailscale 노드-투-노드(L3)** — VXLAN 폐기: DB 복제·모니터링은 TCP라 L2 불필요. `accept-routes=false` 유지(VPC 라우트 주입 시 VSCode Remote-SSH 끊김 — project1 이슈). 노드 간 `100.x` 메시는 accept-routes와 무관하게 동작.
-- ⚠️ **exporter/pg SG 룰은 Tailscale 트래픽에 적용되지 않음**: AWS SG는 ENI(eth0)만 필터링하는데 Tailscale 트래픽은 암호화 터널(tailscale0)로 들어와 SG를 우회함. 실제 접근통제는 **Tailscale ACL + pg_hba.conf**로 한다. (SG 룰은 비통제 — 정리 예정)
+- ⚠️ **exporter/pg는 Tailscale 트래픽이라 SG로 통제 불가**: AWS SG는 ENI(eth0)만 필터링하는데 Tailscale은 암호화 터널(tailscale0)로 들어와 SG를 우회함. 따라서 exporter/pg 인바운드 SG 룰은 두지 않고(**정리 완료**), 실제 통제는 **Tailscale ACL + pg_hba.conf**로 한다.
 - **DNS 토글**: `dns_provider=route53`(팀원) / `cloudflare`(신준한) / `none`. cloudflare는 ACM 검증 레코드를 실제 DNS에 넣어야 검증됨(수업 때 Route53에 넣어 실패했던 부분 해결).
 - **CloudWatch=AWS 인프라 계층, Prometheus=앱/컨테이너/pg**: 알림 발송은 D의 Grafana/Alertmanager→Telegram으로 통일(별도 Lambda 미사용). SNS 토픽/알람은 AWS 콘솔 가시성·백업 경로로만 유지.
 
@@ -269,12 +269,10 @@ make destroy     # 전체 삭제 (실습 후 비용 절감)
 
 ## 8. 알려진 이슈 / 주의
 
-- **App이 아직 Tailscale 노드가 아님** → 현재 App 메트릭 scrape 불가. #3 결정(a)에 따라 launch template user_data에 `tailscale up`(ephemeral·tag) 추가 예정.
 - **tailscale_device wait_for(180s)**: 부팅 지연 시 apply 실패 가능 → 재apply 또는 wait 상향.
 - **tailscale_tailnet_key ephemeral=false**: destroy 후 재apply 시 동일 hostname의 stale device가 남아 `data.tailscale_device`가 오매칭될 수 있음 → 데모 reset 시 Admin 콘솔에서 수동 정리.
 - **lb-key 사전 생성 필수**: 없으면 EC2 생성 실패.
 - **`make backup` 타깃 부재**: check.sh가 안내하나 Makefile에 미구현 → 추가 또는 안내 정정 필요(비차단).
-- **tg_unhealthy 알람이 blue TG만 감시**: Green 전환 후 사각지대 — green 알람 추가 검토.
 
 ---
 
@@ -284,3 +282,4 @@ make destroy     # 전체 삭제 (실습 후 비용 절감)
 |------|-----------|--------|
 | 2026-05-30 | 초안 작성, 디렉토리 구조 확정 | 신준한 |
 | 2026-06-04 | 현재 13개 .tf 기준 전면 갱신: local state·ALB·ASG(blue/green)·CloudWatch·IAM·S3·DNS 토글·Tailscale 노드-투-노드(VXLAN 폐기) 반영. DB egress-only·ASG 0대 staging·SG/Tailscale 통제 주의 추가 | 신준한 |
+| 2026-06-22 | 코드 정합 갱신: **S3 backend 확정**(local state 설명 제거)·ASG desired=1 해제·App Tailscale scrape 구현 반영·SG exporter 룰 정리 완료·tg_unhealthy_green 알람 반영. 인터페이스 표 상태 갱신(구현됨) | 신준한 |
