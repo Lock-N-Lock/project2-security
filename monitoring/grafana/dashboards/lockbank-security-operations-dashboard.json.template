@@ -1531,10 +1531,6 @@
                   {
                     "color": "#374151",
                     "value": null
-                  },
-                  {
-                    "color": "red",
-                    "value": 80
                   }
                 ]
               }
@@ -1572,10 +1568,10 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "sum(increase(recovery_attempt_total[24h]))",
-              "instant": false,
+              "expr": "sum(recovery_attempt_total) or vector(0)",
+              "instant": true,
               "legendFormat": "__auto",
-              "range": true,
+              "range": false,
               "refId": "A"
             }
           ],
@@ -1599,11 +1595,11 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "#374151",
                     "value": null
                   },
                   {
-                    "color": "red",
+                    "color": "#1d4ed8",
                     "value": 80
                   }
                 ]
@@ -1643,10 +1639,10 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "(\r\n  sum(increase(recovery_success_total[24h]))\r\n  /\r\n  clamp_min(sum(increase(recovery_attempt_total[24h])), 1)\r\n) * 100",
-              "instant": false,
+              "expr": "(\r\n  sum(recovery_success_total)\r\n  /\r\n  clamp_min(sum(recovery_attempt_total), 1)\r\n) * 100",
+              "instant": true,
               "legendFormat": "__auto",
-              "range": true,
+              "range": false,
               "refId": "A"
             }
           ],
@@ -1760,11 +1756,11 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "#374151",
                     "value": null
                   },
                   {
-                    "color": "red",
+                    "color": "#1d4ed8",
                     "value": 80
                   }
                 ]
@@ -1828,11 +1824,11 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "blue",
+                    "color": "#374151",
                     "value": null
                   },
                   {
-                    "color": "red",
+                    "color": "#1d4ed8",
                     "value": 80
                   }
                 ]
@@ -2198,9 +2194,10 @@
     "list": []
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-1h",
     "to": "now"
   },
+  "refresh": "5s",
   "timepicker": {},
   "timezone": "browser",
   "title": "LockBank Security & Operations Dashboard",

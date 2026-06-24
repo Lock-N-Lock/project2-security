@@ -20,7 +20,7 @@ TF_DIR := infra/terraform
 TF_DIR2 := infra/ansible
 
 .PHONY: help setup check init fmt validate plan apply apply-auto output destroy destroy-db clean deploy-db deploy-app service build-push build-push-bootstrap
-.PHONY: monitoring-bootstrap monitoring-nginx-logs monitoring-service full-service
+.PHONY: monitoring-bootstrap monitoring-nginx-logs monitoring-service full-service wait-app
 
 help:
 	@echo ""
@@ -140,6 +140,22 @@ build-push-bootstrap:
 ## 인프라 + DB까지 한 번에
 service: build-push build-push-bootstrap apply-auto deploy-db
 
+
+wait-app:
+	@echo "🔌 Waiting for App Tailscale IP..."
+	@for i in $$(seq 1 60); do \
+		APP_IP=$$(tailscale status | awk '/lb-app-i-/ && $$0 !~ /offline/ {print $$1; exit}'); \
+		if [ -n "$$APP_IP" ]; then \
+			echo "✅ App IP: $$APP_IP"; \
+			exit 0; \
+		fi; \
+		echo "⏳ App Tailscale IP 대기 중... ($$i/60)"; \
+		sleep 5; \
+	done; \
+	echo "❌ App Tailscale IP 없음"; \
+	exit 1
+
+
 output:
 	@echo ""
 	@echo "=== 생성된 리소스 출력 ==="
@@ -172,13 +188,23 @@ monitoring-bootstrap:
 monitoring-nginx-logs:
 	@echo "🔐 nginx 로그 백업 설정에 sudo 권한이 필요합니다."
 	@sudo -v
-	sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh
+	@sudo bash monitoring/scripts/setup_aws_nginx_log_backup.sh; \
+	rc=$$?; \
+	if [ "$$rc" = "141" ]; then \
+		echo "[WARN] setup_aws_nginx_log_backup.sh exited with 141(SIGPIPE), but services may already be active. Continuing."; \
+		exit 0; \
+	elif [ "$$rc" -ne 0 ]; then \
+		exit $$rc; \
+	fi
+
 
 monitoring-service: monitoring-bootstrap monitoring-nginx-logs
 
 full-service:
 	@sudo -v
 	$(MAKE) service
+	$(MAKE) wait-app
+	$(MAKE) deploy-app
 	$(MAKE) monitoring-service
 
 # ── 정리 ──────────────────────────────────────────────────

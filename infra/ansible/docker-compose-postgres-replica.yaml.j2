@@ -9,6 +9,7 @@ services:
   lb_database_replica:
     image: postgres:15
     container_name: lb-postgres-replica
+    restart: unless-stopped
     ports:
       - "5432:5432"
     environment:
