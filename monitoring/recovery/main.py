@@ -297,6 +297,16 @@ def webhook(payload: dict, background_tasks: BackgroundTasks):
 
     write_recovery_log(f"policy loaded: {alertname}")
 
+    mode = policy.get("mode", "auto_recovery")
+
+    if mode == "notify_only":
+        write_recovery_log(f"notify_only: recovery not required: {alertname}")
+        return {
+            "status": "notify_only",
+            "alertname": alertname,
+            "message": "recovery not required"
+        }
+
     command = policy.get("command")
 
     if not command:
