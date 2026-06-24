@@ -479,8 +479,7 @@
             <section id="security" class="section">
                 <div class="section-title">Login Attack</div>
                 <div class="section-desc">
-                    반복 로그인 실패 요청으로 401 응답과 로그인 실패 수가 증가하고, Fail2Ban 차단 및 Alert 발생 여부를 확인합니다.
-                </div>
+                    반복 로그인 실패 요청으로 HTTP 401 응답과 로그인 실패 수가 증가하며, Fail2Ban이 공격 IP를 탐지·차단하고 Alert 발생 여부를 확인합니다.                </div>
 
                 <div class="chart-grid">
                     <div class="card chart">
@@ -522,92 +521,89 @@
                 <section id="flooding" class="section">
                     <div class="section-title">API Flooding</div>
 
-                    <div class="section-desc">
-                        대량 API 요청으로 Request Rate가 증가하고, Nginx Rate Limit에 의해 429 응답이 발생하며 ASG 확장 여부를 확인합니다.
+                <div class="section-desc">
+                    대량 API 요청으로 Request Rate가 증가하고,
+                    Nginx Rate Limit에 의해 HTTP 429 응답이 발생하며
+                    Rate Limit 차단 및 Alert 발생 여부를 확인합니다.
+                </div>
+
+                <div class="chart-grid">
+                    <div class="card chart">
+                        <div class="card-title">
+                            <i class="fa-solid fa-gauge-high"></i>
+                            HTTP 429 Count
+                        </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=32&theme=${GRAFANA_THEME}">
+                        </iframe>
                     </div>
 
-                    <div class="chart-grid">
-                        <div class="card chart">
-                            <div class="card-title">
-                                <i class="fa-solid fa-gauge-high"></i>
-                                HTTP 429 Count
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=32&theme=${GRAFANA_THEME}">
-                            </iframe>
+                    <div class="card chart">
+                        <div class="card-title">
+                            <i class="fa-solid fa-chart-line"></i>
+                            Request Rate
                         </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=4&theme=${GRAFANA_THEME}">
+                        </iframe>
+                    </div>
+                </div>
 
-                        <div class="card chart">
-                            <div class="card-title">
-                                <i class="fa-solid fa-chart-line"></i>
-                                Request Rate
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=4&theme=${GRAFANA_THEME}">
-                            </iframe>
+                <div class="chart-grid">
+                    <div class="card chart">
+                        <div class="card-title">
+                            <i class="fa-solid fa-microchip"></i>
+                            CPU Usage
                         </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=5&theme=${GRAFANA_THEME}">
+                        </iframe>
                     </div>
 
-                    <div class="chart-grid">
-                        <div class="card chart">
-                            <div class="card-title">
-                                <i class="fa-solid fa-microchip"></i>
-                                CPU Usage
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=5&theme=${GRAFANA_THEME}">
-                            </iframe>
+                    <div class="card chart">
+                        <div class="card-title">
+                            <i class="fa-solid fa-network-wired"></i>
+                            Network In/Out
                         </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=24&theme=${GRAFANA_THEME}">
+                        </iframe>
+                    </div>
+                </div>
 
-                        <div class="card chart">
-                            <div class="card-title">
-                                <i class="fa-solid fa-network-wired"></i>
-                                Network In/Out
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=24&theme=${GRAFANA_THEME}">
-                            </iframe>
+                <div class="stat-grid compact">
+                    <div class="card stat">
+                        <div class="card-title">
+                            <i class="fa-solid fa-shield-halved"></i>
+                            Blocked IP Count
                         </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=20&theme=${GRAFANA_THEME}">
+                        </iframe>
                     </div>
 
-                    <div class="stat-grid">
-                        <div class="card stat">
-                            <div class="card-title">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                Blocked IP Count
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=20&theme=${GRAFANA_THEME}">
-                            </iframe>
+                    <div class="card stat">
+                        <div class="card-title">
+                            <i class="fa-solid fa-bell"></i>
+                            Active Alerts
                         </div>
-
-                        <div class="card stat">
-                            <div class="card-title">
-                                <i class="fa-solid fa-server"></i>
-                                ASG Instance Count
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=23&theme=${GRAFANA_THEME}">
-                            </iframe>
-                        </div>
-
-                        <div class="card stat">
-                            <div class="card-title">
-                                <i class="fa-solid fa-bell"></i>
-                                Active Alerts
-                            </div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=16&theme=${GRAFANA_THEME}">
-                            </iframe>
-                        </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=16&theme=${GRAFANA_THEME}">
+                        </iframe>
                     </div>
-                    <div class="log-grid compact-log">
-                        <div class="card wide">
-                            <div class="card-title"><i class="fa-solid fa-clock-rotate-left"></i> Unified Event Timeline</div>
-                            <iframe
-                                src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=2&theme=${GRAFANA_THEME}"></iframe>
+                </div>
+
+                <div class="log-grid compact-log">
+                    <div class="card wide">
+                        <div class="card-title">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                            Unified Event Timeline
                         </div>
+                        <iframe
+                            src="${GRAFANA_BASE_PATH}/d-solo/${GRAFANA_DASHBOARD_UID}/${GRAFANA_DASHBOARD_SLUG}?orgId=${GRAFANA_ORG_ID}&from=${GRAFANA_TIME_FROM}&to=${GRAFANA_TIME_TO}&panelId=2&theme=${GRAFANA_THEME}">
+                        </iframe>
                     </div>
+                </div>
                 </section>
 
                 <section id="recovery" class="section">
