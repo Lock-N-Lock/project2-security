@@ -1,0 +1,280 @@
+# ==================================================
+# Recovery Policy Configuration
+# ==================================================
+#
+# mode
+#
+# auto_recovery
+#   - Recovery Controller가 자동 복구 수행
+#   - Verify 성공 시 복구 성공 로그 기록
+#
+# notify_only
+#   - 자동 복구 수행 안 함
+#   - 알림 및 Event History 기록만 수행
+#
+# category
+#
+# user_service
+#   - 사용자 서비스 장애
+#   - 알림 O / 자동복구 O / recovery.log
+#
+# maintenance
+#   - 운영 컴포넌트 장애
+#   - 알림 X / 자동복구 O / maintenance.log
+#
+# security
+#   - 보안 이벤트
+#   - 알림 O / 자동복구 X / event.log
+#
+# 참고
+#   - PostgresDown 정책은 추후 결정
+#   - Notify Only / Replica Promote 검토 중
+#   - RecoveryControllerDown은 자기 자신을 복구할 수 없으므로 별도 보호 방식 검토
+#
+# ==================================================
+
+
+# --------------------------------------------------
+# User Service Recovery
+# --------------------------------------------------
+
+# App 서비스 장애
+BankAppDown:
+  description: "LockBank FastAPI container is down"
+  category: user_service
+  notify: true
+  notify_success: true
+  log: recovery.log
+  mode: auto_recovery
+  action: restart_remote_container
+  target: aws-app
+  command: "bash ./actions/aws_app_restart.sh"
+  pre_verify:
+    type: http
+    url: "${APP_HEALTH_URL}"
+    timeout: 5
+  verify:
+    type: http
+    url: "${APP_HEALTH_URL}"
+    timeout: 5
+  retry: 3
+  verify_delay: 20
+  retry_interval: 15
+  cooldown: 30
+
+
+  # AppNginxDown:
+  # description: "AWS App Nginx container is down"
+  # category: user_service
+  # notify: true
+  # notify_success: true
+  # log: recovery.log
+  # mode: auto_recovery
+  # action: restart_remote_container
+  # target: aws-nginx
+  # command: "bash ./actions/aws_app_restart.sh lb-security-nginx"
+  # verify:
+  #   type: http
+  #   url: "${APP_HEALTH_URL}"
+  #   timeout: 5
+  # retry: 3
+  # verify_delay: 10
+  # retry_interval: 10
+  # cooldown: 10
+
+
+# --------------------------------------------------
+# Maintenance Recovery
+# --------------------------------------------------
+
+# 운영 컴포넌트
+# Prometheus 장애 시 자동 복구
+PrometheusDown:
+  description: "Prometheus service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-monitoring-prometheus
+
+  command: "bash ./actions/docker_restart.sh lb-monitoring-prometheus"
+
+  pre_verify:
+    type: http
+    url: "http://prometheus:9090/-/ready"
+    timeout: 5
+
+  verify:
+    type: http
+    url: "http://prometheus:9090/-/ready"
+    timeout: 5
+
+  retry: 3
+  cooldown: 300
+
+
+# 운영 컴포넌트
+# Grafana 장애 시 자동 복구
+GrafanaDown:
+  description: "Grafana service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-monitoring-grafana
+
+  command: "bash ./actions/docker_restart.sh lb-monitoring-grafana"
+
+  pre_verify:
+    type: http
+    url: "http://grafana:3000/api/health"
+    timeout: 5
+
+  verify:
+    type: http
+    url: "http://grafana:3000/api/health"
+    timeout: 5
+
+  retry: 3
+  cooldown: 300
+
+
+# 운영 컴포넌트
+# Alertmanager 장애 시 자동 복구
+AlertmanagerDown:
+  description: "Alertmanager service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-monitoring-alertmanager
+
+  command: "bash ./actions/docker_restart.sh lb-monitoring-alertmanager"
+
+  pre_verify:
+    type: http
+    url: "http://alertmanager:9093/-/ready"
+    timeout: 5
+
+  verify:
+    type: http
+    url: "http://alertmanager:9093/-/ready"
+    timeout: 5
+
+  retry: 3
+  cooldown: 300
+
+NginxExporterDown:
+  description: "Nginx Exporter service is down"
+
+  category: maintenance
+  notify: false
+  log: maintenance.log
+
+  mode: auto_recovery
+
+  action: restart_container
+
+  target: lb-monitoring-nginx-exporter
+
+  command: "bash ./actions/docker_restart.sh lb-monitoring-nginx-exporter"
+
+  pre_verify:
+    type: http
+    url: "http://nginx-exporter:9113/metrics"
+    timeout: 5
+
+  verify:
+    type: http
+    url: "http://nginx-exporter:9113/metrics"
+    timeout: 5
+
+  retry: 3
+  cooldown: 300
+
+
+# --------------------------------------------------
+# Security Events
+# --------------------------------------------------
+
+# 로그인 실패 급증
+# 운영자 확인 대상
+HighLoginFailureRate:
+  description: "High login failure rate detected"
+
+  category: security
+  notify: true
+  log: event.log
+
+  mode: notify_only
+
+
+# Rate Limit 발생
+# 운영자 확인 대상
+RateLimitTriggered:
+  description: "Rate limit triggered"
+
+  category: security
+  notify: true
+  log: event.log
+
+  mode: notify_only
+
+
+# --------------------------------------------------
+# Database Recovery
+# --------------------------------------------------
+#
+# PostgresDown:
+#   description: "PostgreSQL primary container is down"
+#
+#   category: database
+#   notify: true
+#   log: recovery.log
+#
+#   mode: auto_recovery
+#
+#   action: restart_remote_container
+#
+#   target: lb-postgres-main
+#
+#   command: "bash ./actions/remote_docker_restart.sh lb-postgres-main lb-postgres-main"
+#
+#   verify:
+#     type: command
+#     command: "bash ./actions/remote_pg_isready.sh lb-postgres-main lb-postgres-main lb-user lb-db"
+#     timeout: 10
+#
+#   retry: 2
+#   cooldown: 30
+#
+# NOTE:
+# - DB는 AWS lb-postgres-main 호스트에 배포되는 구조
+# - Recovery Controller는 온프레 monitoring 영역에서 동작하므로 원격 실행 방식 필요
+# - Terraform plan/apply 및 DB 배포 검증 후 활성화
+# - Replica Promote / Failover는 자동화 범위 외
+
+
+# --------------------------------------------------
+# Pending Decisions
+# --------------------------------------------------
+#
+# - RecoveryControllerDown 보호 방식
+#   - Docker restart policy
+#   - systemd
+#   - 외부 감시

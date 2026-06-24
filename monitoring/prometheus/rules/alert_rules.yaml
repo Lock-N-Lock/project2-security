@@ -1,0 +1,193 @@
+groups:
+  - name: monitoring
+
+    rules:
+      # ==================================================
+      # Application Alerts
+      # AWS App ASG 인스턴스 scrape 검증 후 활성화
+      #
+      # BankAppDown:
+      # - LockBank /health endpoint 장애
+      # - FastAPI 8080 직접 노출 없이 Nginx 80 경유 health probe로 검증
+      # - Alertmanager를 통해 Telegram 알림을 전송하고,
+      #   Recovery Controller가 복구를 시도한다.
+      #
+      # AppNodeExporterDown:
+      # - App 서버 node_exporter 장애
+      # - 서버 리소스 메트릭 수집 불가 상태를 탐지한다.
+      # - FastAPI 앱 장애와는 복구 대상이 다르므로 BankAppDown과 분리한다.
+      # ==================================================
+
+      - alert: BankAppDown
+        expr: max(probe_success{job="app-health"}) == 0
+        for: 10s
+        labels:
+          severity: critical
+          category: user_service
+          service: lockbank-app
+        annotations:
+          summary: LockBank App Down
+          description: LockBank /health probe via Nginx is failed.
+
+      - alert: HighLoginFailureRate
+        expr: nginx_login_401_count >= 3
+        for: 10s
+        labels:
+          severity: warning
+          category: security
+          service: lockbank-app
+        annotations:
+          summary: High Login Failure Rate
+          description: Login failure count exceeded threshold in recent Nginx logs.
+
+      - alert: RateLimitTriggered
+        expr: nginx_status_429_count >= 5
+        for: 30s
+        labels:
+          severity: warning
+          category: security
+          service: nginx
+        annotations:
+          summary: Rate Limit Triggered
+          description: HTTP 429 count exceeded threshold in recent Nginx logs.
+
+      # - alert: AppNodeExporterDown
+      #   expr: up{job="app-nodes", instance=~".*:9100"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: app-node-exporter
+      #   annotations:
+      #     summary: App Node Exporter Down
+      #     description: App server node_exporter metrics endpoint is down.
+
+      # ==================================================
+      # Database Alerts
+      # DB 노드 / PostgreSQL Exporter scrape 검증 후 활성화
+      #
+      # PostgresDown:
+      # - PostgreSQL 서비스 또는 PostgreSQL Exporter 기준 DB 상태 장애
+      # - DB 장애는 사용자 서비스 영향 가능성이 있으므로 critical로 분류한다.
+      #
+      # PostgresExporterDown:
+      # - PostgreSQL Exporter 자체 장애
+      # - DB 장애와 구분하기 위해 exporter 장애로 분리한다.
+      # ==================================================
+
+      # - alert: PostgresDown
+      #   expr: pg_up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: critical
+      #     category: database
+      #     service: postgres
+      #   annotations:
+      #     summary: PostgreSQL Down
+      #     description: PostgreSQL database is not accepting connections.
+
+      # - alert: PostgresExporterDown
+      #   expr: up{job="db-node", instance=~".*:9187"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: postgres-exporter
+      #   annotations:
+      #     summary: PostgreSQL Exporter Down
+      #     description: PostgreSQL exporter metrics endpoint is down.
+
+      # - alert: DBNodeExporterDown
+      #   expr: up{job="db-node", instance=~".*:9100"} == 0
+      #   for: 1m
+      #   labels:
+      #     severity: warning
+      #     category: exporter
+      #     service: db-node-exporter
+      #   annotations:
+      #     summary: DB Node Exporter Down
+      #     description: DB server node_exporter metrics endpoint is down.
+
+
+      # ==================================================
+      # Maintenance Alerts
+      # 현재 Prometheus scrape 대상 기준으로 활성화
+      # 운영 컴포넌트 장애는 Alertmanager를 통해 Telegram 알림을 전송하고,
+      # Recovery Controller가 복구를 시도한다.
+      # 복구 결과는 maintenance.log에 기록한다.
+      # ==================================================
+
+      - alert: PrometheusDown
+        expr: up{job="prometheus"} == 0
+        for: 30s
+        labels:
+          severity: warning
+          category: maintenance
+          service: prometheus
+        annotations:
+          summary: Prometheus Down
+          description: Prometheus scrape target is down.
+
+      - alert: AlertmanagerDown
+        expr: up{job="alertmanager"} == 0
+        for: 30s
+        labels:
+          severity: warning
+          category: maintenance
+          service: alertmanager
+        annotations:
+          summary: Alertmanager Down
+          description: Alertmanager scrape target is down.
+
+      - alert: GrafanaDown
+        expr: up{job="grafana"} == 0
+        for: 30s
+        labels:
+          severity: warning
+          category: maintenance
+          service: grafana
+        annotations:
+          summary: Grafana Down
+          description: Grafana scrape target is down.
+      
+      - alert: NginxExporterDown
+        expr: up{job="nginx-exporter"} == 0
+        for: 30s
+        labels:
+          severity: warning
+          category: maintenance
+          service: nginx-exporter
+        annotations:
+          summary: Nginx Exporter Down
+          description: Nginx Exporter scrape target is down.
+
+      # ==================================================
+      # Test Alerts
+      # ==================================================
+
+      # - alert: TestAlert
+      #   expr: vector(1)
+      #   for: 10s
+      #   labels:
+      #     severity: warning
+      #     category: test
+      #   annotations:
+      #     summary: Test Alert
+      #     description: Prometheus → Alertmanager → Recovery 테스트
+
+      # ==================================================
+      # TODO Alerts
+      # 실제 scrape target / app metrics 확정 후 활성화
+      # 헷갈리지 않도록 활성 Alert와 분리
+      # ==================================================
+
+      # - alert: NginxDown
+      #   expr: up{job="nginx"} == 0
+      #   for: 30s
+      #   labels:
+      #     severity: warning
+      #     category: maintenance
+      #     service: nginx
+      #   annotations:
+      #     summary: Nginx Down
+      #     description: Nginx availability check requires nginx-exporter or blackbox-exporter.

@@ -5,7 +5,7 @@
 
 output "alb_dns_name" {
   description = "ALB DNS (B·C·E: 서비스 접근/배포 검증)"
-  value       = aws_lb.main.dns_name
+  value       = aws_lb.web_alb.dns_name
 }
 
 output "service_domain" {
@@ -46,11 +46,11 @@ output "nat_public_ip" {
 output "sg_ids" {
   description = "Security Group ID 모음 (전 트랙 참조)"
   value = {
-    alb     = aws_security_group.alb.id
-    app     = aws_security_group.app.id
-    db      = aws_security_group.db.id
-    bastion = aws_security_group.bastion.id
-    nat     = aws_security_group.nat.id
+    alb     = aws_security_group.alb_sg.id
+    app     = aws_security_group.app_sg.id
+    db      = aws_security_group.db_sg.id
+    bastion = aws_security_group.bastion_sg.id
+    nat     = aws_security_group.nat_sg.id
   }
 }
 
@@ -88,5 +88,5 @@ output "grafana_cw_secret_access_key" {
 
 output "db_tailscale_ip" {
   description = "DB Tailscale IP (proj-mgmt replica 가 이 100.x:5432 로 복제)"
-  value       = data.tailscale_device.db.addresses
+  value       = data.tailscale_device.db_device.addresses
 }

@@ -34,13 +34,19 @@ resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
   evaluation_periods  = 1
   threshold           = 10
   comparison_operator = "GreaterThanThreshold"
-  dimensions          = { LoadBalancer = aws_lb.main.arn_suffix }
+  dimensions          = { LoadBalancer = aws_lb.web_alb.arn_suffix }
   alarm_actions       = [aws_sns_topic.alerts.arn]
   treat_missing_data  = "notBreaching"
 }
 
 # ── Target Group Unhealthy (앱 인스턴스 다운) ─────────────
+# NOTE(2026-06-19):
+# BankAppDown(Prometheus) + Recovery Controller가 서비스 레벨 장애를 감지/복구하므로,
+# Target Group UnHealthyHostCount 알람은 동일 장애에 대한 중복 알림과 불필요한 비용을 유발한다.
+# ASG의 ELB Health Check 기반 인스턴스 교체는 이 CloudWatch Alarm 없이도 동작한다.
+# 장기 장애 감지 용도로 필요할 경우 count를 1로 변경하여 재활성화한다.
 resource "aws_cloudwatch_metric_alarm" "tg_unhealthy" {
+  count               = 0
   alarm_name          = "${var.project}-tg-unhealthy"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
@@ -50,7 +56,7 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
-    LoadBalancer = aws_lb.main.arn_suffix
+    LoadBalancer = aws_lb.web_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.blue.arn_suffix
   }
   alarm_actions      = [aws_sns_topic.alerts.arn]
@@ -58,6 +64,7 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy" {
 }
 
 resource "aws_cloudwatch_metric_alarm" "tg_unhealthy_green" {
+  count               = 0
   alarm_name          = "${var.project}-tg-unhealthy-green"
   namespace           = "AWS/ApplicationELB"
   metric_name         = "UnHealthyHostCount"
@@ -67,7 +74,7 @@ resource "aws_cloudwatch_metric_alarm" "tg_unhealthy_green" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   dimensions = {
-    LoadBalancer = aws_lb.main.arn_suffix
+    LoadBalancer = aws_lb.web_alb.arn_suffix
     TargetGroup  = aws_lb_target_group.green.arn_suffix
   }
   alarm_actions      = [aws_sns_topic.alerts.arn]

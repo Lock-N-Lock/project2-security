@@ -33,7 +33,7 @@
 
 # Lock & Lock — 금융 서비스 보안 자동 대응 시스템
 
-악성 IP 자동 차단과 침입 시 환경 격리(Blue→Green 전환)를 통한 **보안**, 트래픽 부하에 따른 오토스케일링으로 달성하는 **비용·가용성**, 정책 기반 자동 대응과 상태 검증(verify)·복구 로그를 통한 **운영 안정성** — 이 세 가지를 핵심 가치로 하는 하이브리드(온프레미스↔AWS) 보안 대응 시스템입니다.
+악성 IP 자동 차단과 취약점 스캔 게이트(4중 잠금)를 통한 **보안**, 트래픽 부하에 따른 오토스케일링으로 달성하는 **비용·가용성**, 정책 기반 자동 대응과 상태 검증(verify)·복구 로그를 통한 **운영 안정성** — 이 세 가지를 핵심 가치로 하는 하이브리드(온프레미스↔AWS) 보안 대응 시스템입니다.
 
 ---
 
@@ -43,7 +43,7 @@
 |------|------|------------|----------|
 | A | 인프라·IaC | 신준한 / 박정은 | `infra/terraform`, `infra/ansible` |
 | B | 앱서비스·컨테이너 | 최상우 / 임종원 | `app/` |
-| C | CI/CD·Blue-Green | 임종원 / 신준한 | `.github/workflows`, `scripts/` |
+| C | CI/CD·DevSecOps | 임종원 / 신준한 | `.github/workflows`, `scripts/` |
 | D | 모니터링·알림·복구 | 이지윤 / 박정은 | `monitoring/` |
 | E | 보안 시나리오·대응 | 박정은 / 이지윤 | `security/` |
 
@@ -58,34 +58,74 @@ proj-mgmt(VMware, Rocky 8)에서 아래 세 스크립트를 순서대로 실행�
 cd ~/project2-security
 chmod +x setup.sh check.sh bootstrap_tailscale.sh   # 최초 1회
 bash setup.sh             # ① 도구 설치 + AWS 자격증명 + Docker Hub 로그인
-./bootstrap_tailscale.sh  # ② Tailscale 연결 (+ VXLAN 준비)
+./bootstrap_tailscale.sh  # ② Tailscale 연결 (노드-투-노드 L3)
 make check                # ③ 환경 점검
 ```
 
 | 스크립트 | 역할 |
 |---|---|
 | `setup.sh` | AWS CLI·Terraform·Ansible·Docker 설치 + AWS 자격증명·Docker Hub 등록 |
-| `bootstrap_tailscale.sh` | Tailscale 하이브리드 연결 + VXLAN 오버레이 준비 |
+| `bootstrap_tailscale.sh` | Tailscale 하이브리드 연결 (노드-투-노드 L3) |
 | `check.sh` | 도구·자격증명·연결 상태 점검 |
 
-> 세팅 완료 후 `make check`에서 `[6] VXLAN`만 ⚠️로 나오는 것은 정상입니다(AWS Bastion 생성 전). Bastion 생성 후 VXLAN 적용 절차도 [가이드](./docs/guides/setup-guide.md)에 있습니다.
+> 세팅 완료 후 `make check`의 `[4] Tailscale` 항목이 ✅면 정상입니다. 상세 절차는 [가이드](./docs/guides/setup-guide.md)를 참고하세요.
 
 ---
 
-## 인프라 배포 (Terraform)
+## 배포 (Terraform + Ansible + Monitoring)
 
-초기 환경 세팅 완료 후, AWS 인프라를 프로비저닝합니다.
+초기 환경 세팅(`setup.sh`) 완료 후 프로비저닝합니다.
+state는 **개인별 S3 backend + DynamoDB lock**을 쓰므로, 최초 1회 `init/`로 백엔드 리소스를 만듭니다.
 
 ```bash
-cd infra/terraform
-make init                 # terraform init
-make plan                 # 변경 미리보기
-make apply                # 인프라 생성 (+ Ansible 자동 구성)
-make output               # Bastion·EC2 IP 등 출력 확인
-make destroy              # 실습 후 리소스 삭제 (비용 절감)
+# ① (최초 1회) state용 S3 버킷 + DynamoDB 락 테이블 생성
+cd infra/terraform/init
+terraform init && terraform apply
+terraform output s3_bucket_name        # 생성된 본인 버킷명 확인
+
+# ② backend.hcl 작성 (개인 버킷명 입력, gitignore됨)
+cd ..
+cp hcl/backend.hcl.example hcl/backend.hcl
+#   hcl/backend.hcl 의 bucket = "..." 에 ①의 버킷명 입력
+
+# ③ 인프라 + 앱 + DB 한 번에
+make init           # terraform init -backend-config=hcl/backend.hcl
+make service        # 이미지 빌드·push → 인프라 생성(앱 자동기동) → DB 컨테이너 배포
+make output         # Bastion·EC2 IP·ARN 출력
+
+# ④ 모니터링 스택 (proj-mgmt 로컬, sudo 필요)
+make monitoring-service   # Prometheus/Grafana/Loki/Alertmanager + nginx 로그(:9105)
+
+# ③+④ 전체를 한 번에
+make full-service   # 인프라 + DB + Monitoring 통합
 ```
 
-> ⚠️ 개인 AWS 계정 사용 → 실습 후 반드시 `make destroy`. destroy 전 `make backup`으로 DB dump를 S3에 보존합니다.
+### 개별 명령
+
+| 명령 | 설명 |
+|---|---|
+| `make apply` / `apply-auto` | 인프라만 생성 (앱 user_data 자동기동) |
+| `make deploy-db` | replica DB 컨테이너 배포 (apply 이후) |
+| `make service` | build-push + apply-auto + deploy-db |
+| `make monitoring-service` | 모니터링 + nginx 로그(:9105) |
+| `make full-service` | 인프라 + DB + 모니터링 전체 |
+
+### 정리 (실습 후 필수)
+
+```bash
+make destroy        # Monitoring(AWS+컨테이너) + DB + 인프라 전체 삭제
+```
+
+`make destroy` 흐름:
+1. `monitoring teardown-force` — bootstrap이 만든 AWS 리소스(Lambda·IAM·CW알람·SNS구독) 삭제 (SNS topic은 Terraform 위임)
+2. `monitoring destroy` — 모니터링 컨테이너·볼륨
+3. `destroy-db` — replica DB 스택(컨테이너·볼륨)
+4. `terraform destroy` — VPC·EC2·ASG 등 인프라
+
+부분 정리: `make destroy-db`(replica만), `cd monitoring && make teardown`(AWS 리소스 dry-run 확인).
+
+> ⚠️ 개인 AWS 계정 → 실습 후 반드시 `make destroy`.
+> `hcl/backend.hcl`·`infra/ansible/group_vars/database.yml`은 개인값이라 gitignore → 각자 `.example`에서 복사.
 
 ---
 
@@ -96,7 +136,7 @@ project2-security/
 ├── README.md             # 본 문서
 ├── setup.sh              # 초기 환경 설치 스크립트
 ├── check.sh              # 환경 점검 스크립트
-├── bootstrap_tailscale.sh# Tailscale + VXLAN 연결 스크립트
+├── bootstrap_tailscale.sh# Tailscale 노드-투-노드(L3) 연결 스크립트
 ├── Makefile              # terraform·환경 명령어 단축
 ├── docs/                 # 설계서·다이어그램·가이드
 │   ├── network-design.md # 네트워크 설계서 (CIDR·SG 매트릭스) — A 트랙 산출물
@@ -108,7 +148,7 @@ project2-security/
 ├── app/                  # B 트랙 — FastAPI·Dockerfile·DB 스키마
 ├── monitoring/           # D 트랙 — prometheus·grafana·alertmanager
 ├── security/             # E 트랙 — locust·rate limit·보안 정책
-├── scripts/              # C 트랙 — deploy-bluegreen.sh 등 배포 스크립트
+├── scripts/              # C 트랙 — build-push-image.sh·deploy-app.sh·set-fail2ban.sh
 └── .github/workflows/    # C 트랙 — GitHub Actions (경로 고정)
 ```
 
@@ -148,8 +188,8 @@ feature/<트랙>-<주제>  →  dev (임종원 리뷰·머지)  →  main (신�
 ## 기술 스택
 
 - 클라우드: AWS (VPC·EC2·ASG·CloudWatch·SG/NACL·ALB·Route53·ACM·S3)
-- 하이브리드 연결: Tailscale(암호화 언더레이) + VXLAN(L2 오버레이)
-- 컨테이너: Docker, Docker Swarm(overlay)
+- 하이브리드 연결: Tailscale (노드-투-노드 L3, 퍼블릭 포트 0)
+- 컨테이너: Docker, Docker Compose
 - 앱: FastAPI + PostgreSQL
 - 리버스 프록시: Nginx
 - IaC: Terraform, Ansible
@@ -157,3 +197,25 @@ feature/<트랙>-<주제>  →  dev (임종원 리뷰·머지)  →  main (신�
 - 모니터링: Prometheus, Grafana, Alertmanager / 알림: Telegram·Slack
 - 부하·공격 시뮬레이션: Locust
 - DevSecOps(4중 잠금): Bandit(SAST), Trivy(이미지), OWASP ZAP(DAST), fail2ban·Nginx rate limit(런타임)
+
+---
+## GitHub Actions Secrets 설정
+#### Environment secrets
+| 시크릿 이름 (Name) | 설명 |
+| --- | --- |
+| `ACCESS_KEY` | AWS 인증키 |
+| `SECRET_KEY` | AWS 비밀키 |
+| `CF_TOKEN` | 클라우드플레어 토큰 |
+| `DOMAIN` | 보유 도메인 |
+| `IP` | 허용 IP 대역 |
+| `MY_BUCKET` | S3 버킷명 |
+| `MY_TABLE` | DynamoDB 테이블 |
+| `TAILNET` | 테일스케일 계정 |
+| `TS_API_KEY` | 테일스케일 키 |
+
+#### Repository secrets
+| 시크릿 이름 (Name) | 데이터 예시 |
+| --- | --- |
+| `DB_PASSWORD` | DB 비밀번호 |
+| `DOCKERHUB_USERNAME` | 도커허브 ID |
+| `DOCKERHUB_TOKEN` | 도커허브 토큰 |

@@ -1,14 +1,14 @@
 services:
   prometheus:
     image: prom/prometheus:v2.52.0
-    container_name: lb-prometheus
+    container_name: lb-monitoring-prometheus
     restart: unless-stopped
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
       - ./prometheus/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--config.file=/etc/prometheus/prometheus.yaml"
       - "--storage.tsdb.path=/prometheus"
     ports:
       - "9090:9090"
@@ -19,13 +19,13 @@ services:
 
   alertmanager:
     image: prom/alertmanager:v0.27.0
-    container_name: lb-alertmanager
+    container_name: lb-monitoring-alertmanager
     restart: unless-stopped
     volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - ./alertmanager/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
       - alertmanager_data:/alertmanager
     command:
-      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--config.file=/etc/alertmanager/alertmanager.yaml"
       - "--storage.path=/alertmanager"
     ports:
       - "9093:9093"
@@ -34,32 +34,138 @@ services:
 
   grafana:
     image: grafana/grafana:10.4.2
-    container_name: lb-grafana
+    container_name: lb-monitoring-grafana
     restart: unless-stopped
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning:ro
       - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
     environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
       - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_METRICS_ENABLED=true
     ports:
       - "3000:3000"
     depends_on:
       - prometheus
+      - loki
+    networks:
+      - monitoring
+
+  nginx:
+    image: nginx:stable-alpine
+    container_name: lb-monitoring-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./security-center:/usr/share/nginx/html/security-center:ro
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: lb-monitoring-nginx-exporter
+    command:
+      - -nginx.scrape-uri=http://nginx/stub_status
+    ports:
+      - "9115:9113"
+    depends_on:
+      - nginx
+    restart: unless-stopped
+    networks:
+      - monitoring
+
+  blackbox-exporter:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: lb-monitoring-blackbox-exporter
+    restart: unless-stopped
+    ports:
+      - "9116:9115"
+    networks:
+      - monitoring
+
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: lb-monitoring-loki
+    restart: unless-stopped
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    command:
+      - "-config.file=/etc/loki/loki-config.yaml"
+    networks:
+      - monitoring
+
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: lb-monitoring-promtail
+    restart: unless-stopped
+    volumes:
+      - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
+      - ./recovery/logs:/app/logs:ro
+      - ./logs/aws-nginx:/aws-nginx:ro
+      - ./logs:/monitoring-logs:ro
+    command:
+      - "-config.file=/etc/promtail/promtail-config.yaml"
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+
+  telegram-notifier:
+    build:
+      context: ./telegram-notifier
+    container_name: lb-monitoring-telegram-notifier
+    environment:
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
     networks:
       - monitoring
 
   recovery:
     build:
       context: ./recovery
-    container_name: lb-recovery
+    container_name: lb-monitoring-recovery
+    env_file:
+      - .env
+      - .env.generated
+    environment:
+      TZ: Asia/Seoul
     restart: unless-stopped
     volumes:
       - ./recovery/logs:/app/logs
       - /var/run/docker.sock:/var/run/docker.sock
+      # AWS Remote Adapter
+      - ../infra/terraform/lb-key.pem:/app/ssh/lb-key.pem:ro
     ports:
       - "8001:8000"
+    networks:
+      - monitoring
+
+  tailscale-sd:
+    # Tailscale → Prometheus http_sd 헬퍼
+    build: ./tailscale-sd
+    environment:
+      TS_API_KEY: ${TS_API_KEY} # monitoring/.env (★gitignore)
+      TS_TAILNET: ${TS_TAILNET:--}
+      EXPORTER_PORTS: "9113"
+      DB_PORTS: "9100,9187"
+    restart: unless-stopped
     networks:
       - monitoring
 
@@ -67,6 +173,7 @@ volumes:
   prometheus_data:
   alertmanager_data:
   grafana_data:
+  loki_data:
 
 networks:
   monitoring:

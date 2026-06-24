@@ -70,6 +70,17 @@ variable "db_instance_type" {
   default = "t3.small"
 }
 
+# [선택/Packer] App ASG용 커스텀 AMI.
+#  비우면 모든 팀원이 공용 SSM 최신 AL2023 사용 → 추가 작업 0 (공유 기본값).
+#  개인이 시간 되면 Packer로 docker·tailscale·node_exporter 포함 AMI를 구워
+#  이 값에 넣으면 ASG scale-out이 초 단위로 빨라짐(데모 가속).
+#  ※ AMI는 계정·리전별이라 각자 자기 계정에 구워야 함(팀 공유 X). 순수 옵션.
+variable "app_ami_id" {
+  description = "App ASG 커스텀 AMI(비우면 SSM 최신 AL2023). Packer 데모 가속용, 선택"
+  type        = string
+  default     = ""
+}
+
 # --- Auto Scaling (Blue/Green 색상별 ASG) ---
 variable "asg_min" {
   type    = number
@@ -100,7 +111,7 @@ variable "enable_https" {
 variable "dns_provider" {
   description = "DNS 자동화 방식: route53 | cloudflare | none"
   type        = string
-  default     = "cloudflare"
+  default     = "route53"
 
   validation {
     condition     = contains(["route53", "cloudflare", "none"], var.dns_provider)
@@ -123,16 +134,16 @@ variable "route53_zone_name" {
 
 # cloudflare 전용 — Zone ID + API 토큰 (토큰은 환경변수 권장)
 variable "cloudflare_zone_id" {
-  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
   type        = string
   default     = ""
+  description = "dns_provider=cloudflare 일 때 Cloudflare Zone ID"
 }
 
 variable "cloudflare_api_token" {
-  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
   type        = string
   default     = ""
   sensitive   = true
+  description = "Cloudflare API 토큰. 코드/tfvars 금지, 환경변수 TF_VAR_cloudflare_api_token 로 주입"
 }
 
 variable "tailnet_name" {
@@ -146,24 +157,39 @@ variable "tailscale_api_key" {
   sensitive   = true
 }
 
-
-# --- 접근 제어 / 모니터링 ---
-variable "exporter_ports" {
-  description = "D 트랙 scrape 대상 (node 9100·nginx 9113·pg 9187·app 8000·prom 9090)"
-  type        = list(number)
-  default     = [9100, 9113, 9187, 8000, 9090]
-}
-
 variable "admin_ingress_cidr" {
   description = "Bastion SSH 허용 출처. 반드시 내 공인IP/32 로 지정 (tfvars)"
   type        = string
   # default 제거 → 미입력 시 에러로 강제 (0.0.0.0/0 사고 방지)
 }
 
-# variables.tf 파일 최하단에 추가
 
-variable "onprem_overlay_cidr" {
-  description = "온프레미스 Rocky8 Prometheus 오버레이망 대역 (VXLAN 또는 Tailscale)"
+variable "db_host_replica" {
+  description = "Replica DB의 IP (Tailscale IP)"
   type        = string
-  default     = "10.10.10.0/24" # 만약 Tailscale 100.x 망에서 직접 긁는다면 "100.64.0.0/10" 입력 가능
+  default     = "127.0.0.1"
 }
+
+variable "db_user" {
+  description = "DB 사용자 이름"
+  type        = string
+  default     = "lb-user"
+}
+
+variable "db_password" {
+  description = "DB 비밀번호"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_name" {
+  description = "DB 이름"
+  type        = string
+  default     = "lb-db"
+}
+
+variable "docker_user" {
+  type    = string
+  default = "lockandlock"
+}
+
