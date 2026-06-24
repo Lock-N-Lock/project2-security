@@ -1572,7 +1572,7 @@
                 "uid": "PBFA97CFB590B2093"
               },
               "editorMode": "code",
-              "expr": "(sum(recovery_success_total) / clamp_min(sum(recovery_attempt_total), 1)) * 100",
+              "expr": "sum(increase(recovery_attempt_total[$__range])) or vector(0)",
               "instant": false,
               "legendFormat": "__auto",
               "range": true,

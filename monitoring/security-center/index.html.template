@@ -708,11 +708,8 @@
         const button = document.querySelector(`button[onclick*="'${saved}'"]`);
         if (button) showSection(saved, button);
 
-        document.querySelectorAll('iframe').forEach(iframe => {
-            const url = new URL(iframe.src, window.location.origin);
-            url.searchParams.set('refresh', '5s');
-            iframe.src = url.toString();
-        });
+        // Refresh interval is handled by Grafana dashboard settings.
+
     });
 </script>
 </body>
