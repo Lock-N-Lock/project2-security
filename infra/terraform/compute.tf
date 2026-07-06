@@ -159,7 +159,7 @@ resource "aws_launch_template" "app" {
     db_host_main    = aws_instance.db.private_ip
     db_host_replica = var.db_host_replica
     loki_host       = var.db_host_replica
-}))
+  }))
 
   tag_specifications {
     resource_type = "instance"
